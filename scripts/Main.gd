@@ -615,7 +615,7 @@ func _process(delta: float) -> void:
 		_update_row_wipe(delta)
 		_update_ultimate(delta)
 
-		if not (DevMode.infinite_time or DevMode.god_mode):
+		if not DevMode.infinite_time:
 			trace_progress -= delta / GameState.round_duration
 		if trace_progress <= 0.0:
 			trace_progress = 0.0
@@ -652,6 +652,15 @@ func _find_locked_node() -> ServerNode:
 	if locked.is_empty():
 		return null
 	return locked[randi() % locked.size()]
+
+func _debug_force_honeypot() -> void:
+	var n := _find_locked_node()
+	if n == null and not cells.is_empty():
+		n = cells[0]
+	if n == null:
+		return
+	n.reset_locked(n.is_vulnerable, true)
+	n.add_progress(1.0)
 
 func _update_hunter_bots(delta: float) -> void:
 	while hunter_bots.size() < GameState.hunter_bot_count:
@@ -728,11 +737,11 @@ func _update_row_wipe(delta: float) -> void:
 			_exfiltrate(n)
 
 func _update_ultimate(delta: float) -> void:
-	if GameState.ultimate_wipe_level <= 0 and not DevMode.god_mode:
+	if GameState.ultimate_wipe_level <= 0:
 		return
 	if ultimate_btn == null:
 		_build_ultimate_button()
-	if DevMode.infinite_ultimates or DevMode.god_mode:
+	if DevMode.infinite_ultimates:
 		ultimate_cooldown = 0.0
 	if ultimate_cooldown > 0.0:
 		ultimate_cooldown -= delta

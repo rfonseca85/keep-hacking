@@ -102,6 +102,12 @@ func _draw() -> void:
 
 	_draw_leds(border_col)
 
+	if DevMode.show_debug_info:
+		var state_name := "LOCKED" if state == State.LOCKED else "READY"
+		var info := "%s %d%%" % [state_name, int(progress * 100)]
+		draw_string(ThemeDB.fallback_font, Vector2(-SIZE.x / 2.0, -SIZE.y / 2.0 - 6), info, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color8(255, 220, 120))
+		draw_string(ThemeDB.fallback_font, Vector2(-SIZE.x / 2.0, SIZE.y / 2.0 + 14), device_variant, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color8(140, 200, 255))
+
 func _draw_device(tint: Color) -> void:
 	var scale_pulse := 1.0
 	if state == State.READY and not is_honeypot:

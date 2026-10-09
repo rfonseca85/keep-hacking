@@ -9,6 +9,8 @@ static func play(parent: Node2D, world_pos: Vector2, fx_name: String,
 		scale: float = 1.0) -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
+	if DevMode.disable_fx:
+		return
 	if _active >= MAX_ACTIVE:
 		return
 	var frames := KHArt.fx_frames(fx_name, count, fps)
