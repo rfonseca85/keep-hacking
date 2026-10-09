@@ -13,9 +13,12 @@ const CHAIN_HACK_RATE := 0.25
 const BASE_LINK_CHANCE := 0.22
 const LINK_CHANCE_PER_MESH_LEVEL := 0.14
 const ROW_WIPE_WARN_SEC := 0.9
-const ZERO_DAY_BURST_SEC := 5.0
 const ZERO_DAY_HACK_MULT := 2.75
+const ZERO_DAY_BURST_BY_LEVEL: Array[float] = [0.0, 2.0, 3.0, 5.0]
+const ZERO_DAY_HACKS_BY_LEVEL: Array[int] = [0, 24, 16, 10]
 const ZERO_DAY_SCENE := preload("res://scenes/ZeroDayNode.tscn")
+const DESIGN_VIEWPORT_SIZE := Vector2(1280.0, 720.0)
+const DESIGN_VIEWPORT_CENTER := Vector2(640.0, 360.0)
 
 const COL_BACKDROP := Color8(6, 8, 13)
 const COL_GRID_LINE := Color8(16, 22, 32)
@@ -85,6 +88,8 @@ var _mesh_links: Array = []
 var _row_wipe_pending: Dictionary = {}
 var zero_day_node: ZeroDayNode = null
 var _zeroday_burst_remaining: float = 0.0
+var _round_machines_hacked: int = 0
+var _round_zero_day_consumed: bool = false
 
 var _shown_credits: int = -1
 var _shown_exploits: int = -1
@@ -106,10 +111,13 @@ func _ready() -> void:
 	round_start_zerodays = GameState.zerodays
 	Audio.play_ambient()
 	get_viewport().transparent_bg = false
+	cam.position = DESIGN_VIEWPORT_CENTER
 	cam.make_current()
+	get_viewport().size_changed.connect(_sync_design_layout)
 	_setup_background_layers()
 	_build_grid()
-	_sync_zero_day_node()
+	_reset_zero_day_for_round()
+	_sync_design_layout()
 	hunter_layer.draw.connect(_draw_hunters.bind(hunter_layer))
 	skill_fx_layer.draw.connect(_draw_skill_fx.bind(skill_fx_layer))
 	_setup_hud()
@@ -142,6 +150,13 @@ func _ready() -> void:
 	kh_holo_runtime.game = self
 	add_child(kh_holo_runtime)
 	# KH_HOLOGRAPHIC_END
+
+func _sync_design_layout() -> void:
+	cam.position = DESIGN_VIEWPORT_CENTER
+	var world := $World
+	if world.has_method("sync_to_camera"):
+		world.sync_to_camera()
+
 
 func _setup_background_layers() -> void:
 	$World/CircuitDecor.draw.connect(_draw_circuit_decor.bind($World/CircuitDecor))
@@ -431,6 +446,7 @@ func _setup_hud() -> void:
 func _end_round() -> void:
 	round_active = false
 	is_decrypting = false
+	_remove_zero_day_node()
 	trace_progress = 0.0
 	trace_bar.value = 0.0
 	trace_label.text = "CONNECTION LOST"
@@ -495,6 +511,8 @@ func _exfiltrate(n: ServerNode) -> void:
 			_spawn_floating_text(adjacent.position, "CHAINED", COL_CYAN)
 			VisualFX.play(fx_layer, adjacent.position, "scan_pulse", 10, 20.0, COL_CYAN, 0.7)
 
+	_round_machines_hacked += 1
+	_try_spawn_zero_day()
 	_refresh_hud()
 
 func _spawn_burst(pos: Vector2, col: Color) -> void:
@@ -587,7 +605,6 @@ func _process(delta: float) -> void:
 		_update_hunter_bots(delta)
 		_update_row_wipe(delta)
 		_update_zero_day_burst(delta)
-		_update_zero_day_cooldown(delta)
 
 		if not DevMode.infinite_time:
 			trace_progress -= delta / GameState.round_duration
@@ -766,36 +783,60 @@ func _zero_day_grid_center() -> Vector2:
 	return GRID_ORIGIN + Vector2(float(GRID_COLS) * CELL * 0.5, float(GRID_ROWS) * CELL * 0.5)
 
 
-func _sync_zero_day_node() -> void:
-	if GameState.ultimate_wipe_level <= 0:
-		if zero_day_node != null and is_instance_valid(zero_day_node):
-			zero_day_node.queue_free()
-		zero_day_node = null
-		if _zeroday_burst_remaining > 0.0:
-			_zeroday_burst_remaining = 0.0
-			_rebuild_node_links()
+func _zero_day_level() -> int:
+	return clampi(GameState.ultimate_wipe_level, 0, ZERO_DAY_BURST_BY_LEVEL.size() - 1)
+
+
+func _zero_day_hacks_required() -> int:
+	return ZERO_DAY_HACKS_BY_LEVEL[_zero_day_level()]
+
+
+func _zero_day_burst_duration() -> float:
+	return ZERO_DAY_BURST_BY_LEVEL[_zero_day_level()]
+
+
+func _reset_zero_day_for_round() -> void:
+	_remove_zero_day_node()
+	_round_machines_hacked = 0
+	_round_zero_day_consumed = false
+	_zeroday_burst_remaining = 0.0
+	ultimate_cooldown = 0.0
+
+
+func _remove_zero_day_node() -> void:
+	if zero_day_node != null and is_instance_valid(zero_day_node):
+		zero_day_node.queue_free()
+	zero_day_node = null
+	if _zeroday_burst_remaining > 0.0:
+		_zeroday_burst_remaining = 0.0
+		_rebuild_node_links()
+
+
+func _try_spawn_zero_day() -> void:
+	if GameState.ultimate_wipe_level <= 0 or _round_zero_day_consumed:
 		return
 	if zero_day_node != null and is_instance_valid(zero_day_node):
+		return
+	if _round_machines_hacked < _zero_day_hacks_required():
 		return
 	zero_day_node = ZERO_DAY_SCENE.instantiate() as ZeroDayNode
 	zero_day_node.position = _zero_day_grid_center()
 	zero_day_node.reset_locked(false, false)
 	zero_day_node.activation_requested.connect(_on_zero_day_activation)
 	nodes_layer.add_child(zero_day_node)
+	Audio.play_upgrade()
+	_spawn_floating_text(zero_day_node.position, "0-DAY ONLINE", Color8(216, 110, 255))
+	VisualFX.play(fx_layer, zero_day_node.position, "glitch", 10, 20.0, Color8(216, 110, 255), 1.0)
 
 
 func _on_zero_day_activation(_node: ZeroDayNode) -> void:
-	if not round_active:
-		return
-	if ultimate_cooldown > 0.0 and not DevMode.infinite_ultimates:
-		zero_day_node.reset_locked(false, false)
-		zero_day_node.set_cooldown(true)
+	if not round_active or _round_zero_day_consumed:
 		return
 	_start_zero_day_burst()
 
 
 func _start_zero_day_burst() -> void:
-	_zeroday_burst_remaining = ZERO_DAY_BURST_SEC
+	_zeroday_burst_remaining = _zero_day_burst_duration()
 	if zero_day_node != null:
 		zero_day_node.begin_burst()
 	_apply_burst_links()
@@ -836,30 +877,9 @@ func _update_zero_day_burst(delta: float) -> void:
 
 func _finish_zero_day_burst() -> void:
 	_zeroday_burst_remaining = 0.0
-	if zero_day_node != null and is_instance_valid(zero_day_node):
-		zero_day_node.end_burst()
-		zero_day_node.set_cooldown(true)
-	if not DevMode.infinite_ultimates:
-		ultimate_cooldown = _ultimate_cooldown_max()
+	_round_zero_day_consumed = true
+	_remove_zero_day_node()
 	_rebuild_node_links()
-
-
-func _update_zero_day_cooldown(delta: float) -> void:
-	if GameState.ultimate_wipe_level <= 0:
-		return
-	if DevMode.infinite_ultimates:
-		ultimate_cooldown = 0.0
-		if zero_day_node != null and is_instance_valid(zero_day_node):
-			zero_day_node.set_cooldown(false)
-		return
-	if ultimate_cooldown > 0.0:
-		ultimate_cooldown -= delta
-		if ultimate_cooldown <= 0.0 and zero_day_node != null and is_instance_valid(zero_day_node):
-			zero_day_node.set_cooldown(false)
-
-
-func _ultimate_cooldown_max() -> float:
-	return max(10.0, 30.0 - GameState.ultimate_wipe_level * 5.0)
 
 
 func _hide_legacy_ultimate_hud() -> void:

@@ -258,7 +258,7 @@ display_name = "ZERO-DAY ULTIMATE"
 icon_key = "power"
 base_cost = 350
 max_level = 3
-description = "spawns a 0-DAY core on the grid center — hack it to chain all machines for 5s; shorter recharge per level"
+description = "after hacking enough machines in a run, a 0-DAY core appears — lv1: 24 hacks / 2s chain, lv2: 16 / 3s, lv3: 10 / 5s (once per round)"
 reveal_threshold = 300
 
 [node name="mesh_link" parent="SkillNodesLayer" unique_id=544671606 instance=ExtResource("3_skill")]

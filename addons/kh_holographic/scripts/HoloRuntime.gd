@@ -22,15 +22,19 @@ func _ready() -> void:
     _world_fx.set("game", game)
     world.add_child(_world_fx)
 
-    # High-level HUD decoration only. No clickable components are created.
-    _ui_layer = CanvasLayer.new()
-    _ui_layer.name = "HoloHUDLayer"
-    _ui_layer.layer = 2
-    game.add_child(_ui_layer)
+    # Same CanvasLayer as Main HUD so resize/stretch keeps telemetry aligned with the grid.
+    var hud: CanvasLayer = game.get_node_or_null("HUD") as CanvasLayer
     var telemetry: Control = preload("res://addons/kh_holographic/scripts/HoloTelemetry.gd").new()
     telemetry.set("game", game)
     telemetry.name = "TelemetryPanel"
-    _ui_layer.add_child(telemetry)
+    if hud != null:
+        hud.add_child(telemetry)
+    else:
+        _ui_layer = CanvasLayer.new()
+        _ui_layer.name = "HoloHUDLayer"
+        _ui_layer.layer = 2
+        game.add_child(_ui_layer)
+        _ui_layer.add_child(telemetry)
 
     var styler = preload("res://addons/kh_holographic/scripts/HoloStyler.gd").new()
     styler.apply_to(game)

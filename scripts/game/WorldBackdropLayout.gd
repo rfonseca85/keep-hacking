@@ -1,6 +1,9 @@
 extends Node2D
 
-## Keeps Main gameplay backdrop + scrim matched to the camera view when the window resizes.
+## Backdrop matches the fixed design frame centered on the main camera.
+
+const DESIGN_VIEWPORT_SIZE := Vector2(1280.0, 720.0)
+const DESIGN_VIEWPORT_CENTER := Vector2(640.0, 360.0)
 
 @onready var _backdrop: TextureRect = $Backdrop
 @onready var _scrim: ColorRect = $Scrim
@@ -9,17 +12,17 @@ extends Node2D
 func _ready() -> void:
 	_backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_backdrop.stretch_mode = TextureRect.STRETCH_SCALE
-	_sync_to_camera()
-	get_viewport().size_changed.connect(_sync_to_camera)
+	sync_to_camera()
+	get_viewport().size_changed.connect(sync_to_camera)
 
 
-func _sync_to_camera() -> void:
-	var size := get_viewport().get_visible_rect().size
+func sync_to_camera() -> void:
 	var cam := get_viewport().get_camera_2d()
-	var top_left := Vector2.ZERO
+	var center: Vector2 = DESIGN_VIEWPORT_CENTER
 	if cam != null:
-		top_left = cam.get_screen_center_position() - size * 0.5
+		center = cam.get_screen_center_position()
+	var top_left: Vector2 = center - DESIGN_VIEWPORT_SIZE * 0.5
 	_backdrop.position = top_left
-	_backdrop.size = size
+	_backdrop.size = DESIGN_VIEWPORT_SIZE
 	_scrim.position = top_left
-	_scrim.size = size
+	_scrim.size = DESIGN_VIEWPORT_SIZE
