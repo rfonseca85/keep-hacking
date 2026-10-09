@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bepo5f66bccs"]
 
-[ext_resource type="Script" uid="uid://dhdorl3yc3afo" path="res://scripts/DevMode.gd" id="1"]
-[ext_resource type="Texture2D" uid="uid://usjfndgcitps" path="res://assets/art/assets/backgrounds/ui_blue_background_1280x720.png" id="2_bg"]
+[ext_resource type="Script" path="res://scripts/dev/DevMode.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://usjfndgcitps" path="res://assets/game/backgrounds/ui_blue_background_1280x720.png" id="2_bg"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 bg_color = Color(0.035294, 0.043137, 0.066667, 0.980392)

@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://bkhackmaingame1"]
 
-[ext_resource type="Script" path="res://scripts/Main.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/Main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/MainBackground.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/MainHUD.tscn" id="3"]
 

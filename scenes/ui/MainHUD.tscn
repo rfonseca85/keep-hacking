@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://dn1vqduwder0c"]
 
-[ext_resource type="Texture2D" uid="uid://bgd88uuark538" path="res://assets/art/assets/icons/credits.png" id="2"]
-[ext_resource type="Texture2D" uid="uid://f0h0m17g6177" path="res://assets/art/assets/icons/exploit.png" id="3"]
-[ext_resource type="Texture2D" uid="uid://xlcu3inp2x5a" path="res://assets/art/assets/icons/key.png" id="4"]
+[ext_resource type="Texture2D" uid="uid://bgd88uuark538" path="res://assets/game/icons/credits.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://f0h0m17g6177" path="res://assets/game/icons/exploit.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://xlcu3inp2x5a" path="res://assets/game/icons/key.png" id="4"]
 
 [node name="MainHUD" type="CanvasLayer" unique_id=409679317]
 

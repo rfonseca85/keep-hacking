@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dx2oj7650bypu"]
 
-[ext_resource type="Script" uid="uid://d3wo6vv575gan" path="res://scripts/SkillTree.gd" id="1"]
-[ext_resource type="Texture2D" uid="uid://usjfndgcitps" path="res://assets/art/assets/backgrounds/ui_blue_background_1280x720.png" id="2"]
+[ext_resource type="Script" path="res://scripts/game/SkillTree.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://usjfndgcitps" path="res://assets/game/backgrounds/ui_blue_background_1280x720.png" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/SkillNodeCard.tscn" id="3_skill"]
 
 [node name="SkillTree" type="Control" unique_id=1003589058]

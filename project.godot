@@ -17,8 +17,8 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-GameState="*res://scripts/GameState.gd"
-Audio="*res://scripts/Audio.gd"
+GameState="*res://scripts/autoload/GameState.gd"
+Audio="*res://scripts/autoload/Audio.gd"
 DevMode="*res://scenes/ui/DevMode.tscn"
 
 [display]
@@ -27,10 +27,6 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-
-[dotnet]
-
-project/assembly_name="keep-hacking"
 
 [gui]
 

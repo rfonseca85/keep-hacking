@@ -1,7 +1,7 @@
 extends RefCounted
 class_name KHArt
 
-const ROOT := "res://assets/art/assets/"
+const ROOT := "res://assets/game/"
 
 static var _cache: Dictionary = {}
 

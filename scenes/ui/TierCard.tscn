@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/ui/TierCard.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/TierIcon.gd" id="2"]
-[ext_resource type="Texture2D" uid="uid://cmxe8578d6rt3" path="res://assets/art/assets/ui/selection_card.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://cmxe8578d6rt3" path="res://assets/game/ui/selection_card.png" id="3"]
 
 [node name="TierCard" type="Panel"]
 custom_minimum_size = Vector2(264, 470)

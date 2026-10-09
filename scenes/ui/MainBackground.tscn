@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://bkhackmainbg001"]
 
-[ext_resource type="Texture2D" uid="uid://usjfndgcitps" path="res://assets/art/assets/backgrounds/ui_blue_background_1280x720.png" id="1"]
+[ext_resource type="Texture2D" uid="uid://usjfndgcitps" path="res://assets/game/backgrounds/ui_blue_background_1280x720.png" id="1"]
 
 [node name="MainBackground" type="Node2D"]
 

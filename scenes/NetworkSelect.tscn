@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://bkhacknetselect1"]
 
-[ext_resource type="Script" path="res://scripts/NetworkSelect.gd" id="1"]
-[ext_resource type="Texture2D" uid="uid://usjfndgcitps" path="res://assets/art/assets/backgrounds/ui_blue_background_1280x720.png" id="2"]
+[ext_resource type="Script" path="res://scripts/game/NetworkSelect.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://usjfndgcitps" path="res://assets/game/backgrounds/ui_blue_background_1280x720.png" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TierCard.tscn" id="3"]
 
 [node name="NetworkSelect" type="Control"]

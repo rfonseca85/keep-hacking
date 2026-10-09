@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/ui/SkillNodeCard.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/SkillNodeIcon.gd" id="2"]
-[ext_resource type="Texture2D" uid="uid://cq1x737vnp4jt" path="res://assets/art/assets/ui/skill_node.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://cq1x737vnp4jt" path="res://assets/game/ui/skill_node.png" id="3"]
 
 [node name="SkillNodeCard" type="Control"]
 custom_minimum_size = Vector2(132, 118)
@@ -69,14 +69,16 @@ stretch_mode = 5
 
 [node name="NameLabel" type="Label" parent="."]
 layout_mode = 0
-offset_left = 4.0
-offset_top = 78.0
-offset_right = 128.0
-offset_bottom = 102.0
-theme_override_font_sizes/font_size = 12
+offset_left = 2.0
+offset_top = 80.0
+offset_right = 130.0
+offset_bottom = 98.0
+theme_override_font_sizes/font_size = 10
 text = "SKILL NAME"
 horizontal_alignment = 1
-autowrap_mode = 2
+vertical_alignment = 1
+autowrap_mode = 0
+clip_text = true
 
 [node name="SubLabel" type="Label" parent="."]
 layout_mode = 0
