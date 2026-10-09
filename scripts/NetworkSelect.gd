@@ -9,6 +9,8 @@ const COL_CYAN := Color8(0, 229, 255)
 const COL_MAGENTA := Color8(255, 46, 146)
 const COL_AMBER := Color8(255, 184, 48)
 
+const TIER_EMBLEMS := ["terminal_desk", "server_cluster", "mainframe", "relay_tower"]
+
 var panels: Array[Panel] = []
 var cursor_lbl: Label
 var cursor_t: float = 0.0
@@ -53,12 +55,20 @@ func _ready() -> void:
 		var p := Panel.new()
 		p.position = Vector2(start_x + i * (panel_w + gap), 140)
 		p.size = Vector2(panel_w, 470)
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = COL_PANEL
-		sb.border_color = tier["color"]
-		sb.set_border_width_all(2)
-		sb.set_corner_radius_all(0)
-		p.add_theme_stylebox_override("panel", sb)
+		var card_tex := KHArt.tex("ui", "selection_card")
+		if card_tex:
+			var csb := StyleBoxTexture.new()
+			csb.texture = card_tex
+			csb.set_texture_margin_all(10)
+			csb.modulate_color = Color(1, 1, 1, 1).lerp(tier["color"], 0.22)
+			p.add_theme_stylebox_override("panel", csb)
+		else:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = COL_PANEL
+			sb.border_color = tier["color"]
+			sb.set_border_width_all(2)
+			sb.set_corner_radius_all(0)
+			p.add_theme_stylebox_override("panel", sb)
 		add_child(p)
 		panels.append(p)
 
@@ -87,6 +97,7 @@ func _ready() -> void:
 
 		var icon := _TierIcon.new()
 		icon.col = tier["color"]
+		icon.prop_name = TIER_EMBLEMS[i]
 		icon.position = Vector2(panel_w / 2.0, 150)
 		p.add_child(icon)
 
@@ -241,13 +252,26 @@ func _on_unlock(i: int) -> void:
 
 class _TierIcon extends Node2D:
 	var col: Color
+	var prop_name: String = "server_cluster"
+	var _tex: Texture2D
+	var _t: float = 0.0
 	func _ready() -> void:
+		_tex = KHArt.tex("props", prop_name)
+		set_process(true)
+		queue_redraw()
+	func _process(delta: float) -> void:
+		_t += delta
 		queue_redraw()
 	func _draw() -> void:
-		draw_rect(Rect2(-50, -40, 100, 80), Color8(6,8,13), true)
-		draw_rect(Rect2(-50, -40, 100, 80), col, false, 2.0)
+		var glow := (sin(_t * 2.2) + 1.0) * 0.5
+		var plate := Rect2(-46, -46, 92, 92)
+		draw_rect(plate, Color8(6, 8, 13), true)
+		draw_rect(plate, Color(col.r, col.g, col.b, 0.35 + glow * 0.45), false, 2.0)
+		if _tex:
+			draw_texture_rect(_tex, Rect2(-36, -36, 72, 72), false)
+		else:
+			draw_rect(Rect2(-30, -30, 60, 60), col, false, 2.0)
 		for i in range(3):
-			var y: float = -22 + i * 22
-			draw_rect(Rect2(-40, y, 80, 14), Color8(12,16,24), true)
-			draw_rect(Rect2(-40, y, 80, 14), col, false, 1.0)
-			draw_rect(Rect2(-36, y + 4, 6, 6), col, true)
+			var on := fmod(_t * 1.4 + i * 0.5, 2.0) < 1.0
+			var c := col if on else Color(col.r, col.g, col.b, 0.18)
+			draw_rect(Rect2(-40 + i * 10, 38, 6, 3), c, true)

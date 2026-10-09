@@ -85,12 +85,7 @@ func _build_nodes() -> void:
 		btn.position = s.pos - Vector2(55, 40)
 		btn.size = Vector2(110, 80)
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = COL_PANEL
-		sb.border_color = COL_CYAN
-		sb.set_border_width_all(2)
-		sb.set_corner_radius_all(6)
-		btn.add_theme_stylebox_override("normal", sb)
+		btn.add_theme_stylebox_override("normal", _skill_stylebox("skill_available"))
 		btn.add_theme_color_override("font_color", COL_CYAN)
 		btn.add_theme_font_size_override("font_size", 11)
 		btn.pressed.connect(_on_node_pressed.bind(s, btn))
@@ -128,18 +123,43 @@ func _refresh_node(s, btn: Button) -> void:
 	var icon_node: Node2D = node_icons[s.id]
 	if lvl >= s.max_level:
 		btn.text = "\n\n%s\nMAX" % s.label
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = COL_PANEL
-		sb.border_color = COL_GREEN
-		sb.set_border_width_all(2)
-		sb.set_corner_radius_all(6)
-		btn.add_theme_stylebox_override("normal", sb)
+		btn.add_theme_stylebox_override("normal", _skill_stylebox("skill_active"))
 		btn.add_theme_color_override("font_color", COL_GREEN)
 		icon_node.col = COL_GREEN
 	else:
 		var cost: int = int(s.cost * pow(1.5, lvl))
 		btn.text = "\n\n%s\nLv%d (%d)" % [s.label, lvl, cost]
+		var affordable := GameState.credits >= cost
+		if lvl > 0:
+			btn.add_theme_stylebox_override("normal", _skill_stylebox("skill_active"))
+			btn.add_theme_color_override("font_color", COL_GREEN)
+			icon_node.col = COL_GREEN
+		elif affordable:
+			btn.add_theme_stylebox_override("normal", _skill_stylebox("skill_available"))
+			btn.add_theme_color_override("font_color", COL_CYAN)
+			icon_node.col = COL_CYAN
+		else:
+			btn.add_theme_stylebox_override("normal", _skill_stylebox("skill_locked"))
+			btn.add_theme_color_override("font_color", COL_DIM)
+			icon_node.col = COL_DIM
 	icon_node.queue_redraw()
+
+func _skill_stylebox(state: String) -> StyleBox:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = COL_PANEL
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(0)
+	match state:
+		"skill_active":
+			sb.border_color = COL_GREEN
+			sb.bg_color = Color8(10, 24, 18)
+		"skill_locked":
+			sb.border_color = Color8(52, 62, 76)
+			sb.bg_color = Color8(9, 11, 16)
+		_:
+			sb.border_color = COL_CYAN
+			sb.bg_color = Color8(10, 18, 26)
+	return sb
 
 func _build_hud() -> void:
 	var bottom := Panel.new()
@@ -214,6 +234,9 @@ func _hide_preview() -> void:
 
 func _refresh_hud() -> void:
 	credits_lbl.text = "◈ %d CREDITS" % GameState.credits
+	for s in skills:
+		if node_buttons.has(s.id):
+			_refresh_node(s, node_buttons[s.id])
 
 func _label(text: String, col: Color, size: int, pos: Vector2) -> Label:
 	var l := Label.new()
@@ -224,11 +247,25 @@ func _label(text: String, col: Color, size: int, pos: Vector2) -> Label:
 	return l
 
 class _SkillIcon extends Node2D:
+	const ICON_MAP := {
+		"bolt": "bolt", "bolt2": "bolt",
+		"scan": "scan", "scan2": "scan",
+		"bot": "bot", "bot2": "bot",
+		"cash": "credits", "diamond": "data",
+		"clock": "stealth", "shield": "shield",
+		"grid": "network",
+	}
 	var icon_key: String
 	var col: Color = Color8(0, 229, 255)
+	var _tex: Texture2D
 	func _ready() -> void:
+		var mapped: String = ICON_MAP.get(icon_key, icon_key)
+		_tex = KHArt.tex("icons", mapped)
 		queue_redraw()
 	func _draw() -> void:
+		if _tex:
+			draw_texture_rect(_tex, Rect2(-11, -11, 22, 22), false, col)
+			return
 		match icon_key:
 			"bolt":
 				draw_colored_polygon(PackedVector2Array([Vector2(2,-10), Vector2(-6,2), Vector2(-1,2), Vector2(-3,10), Vector2(6,-2), Vector2(1,-2)]), col)

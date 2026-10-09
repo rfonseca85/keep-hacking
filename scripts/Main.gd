@@ -24,6 +24,7 @@ var shake_amp: float = 0.0
 var rig_t: float = 0.0
 var rig_node: Node2D
 var tick_timer: float = 0.0
+var scan_fx_timer: float = 0.0
 
 var bot_timer: float = 0.0
 var tier: Dictionary
@@ -35,7 +36,7 @@ var round_start_credits: int = 0
 var round_start_exploits: int = 0
 var round_start_zerodays: int = 0
 
-var is_decrypting: bool = false
+var is_decrypting: bool = true
 var mouse_pos: Vector2 = Vector2.ZERO
 
 var cells: Array[ServerNode] = []
@@ -47,6 +48,10 @@ var zerodays_label: Label
 var tier_label: Label
 var trace_bar: ProgressBar
 var trace_label: Label
+
+var _shown_credits: int = -1
+var _shown_exploits: int = -1
+var _shown_zerodays: int = -1
 
 var summary_panel: Panel
 var summary_credits_lbl: Label
@@ -78,6 +83,15 @@ func _ready() -> void:
 		GameState.exploits += 3
 		GameState.zerodays += 1
 		get_tree().create_timer(0.5).timeout.connect(_end_round)
+	if OS.is_debug_build() and OS.get_cmdline_user_args().has("autotest_fx"):
+		VisualFX.play(fx_layer, Vector2(400, 300), "data_extract", 8, 18.0, COL_GREEN)
+		VisualFX.play(fx_layer, Vector2(500, 300), "glitch", 8, 16.0, COL_MAGENTA)
+		VisualFX.play(fx_layer, Vector2(600, 300), "scan_pulse", 10, 20.0, COL_CYAN)
+		var fx_count := fx_layer.get_child_count()
+		print("FX_SMOKE: spawned=%d (expected 3)" % fx_count)
+		get_tree().create_timer(1.5).timeout.connect(func():
+			print("FX_SMOKE: after 1.5s remaining=%d (expected 0)" % fx_layer.get_child_count())
+		)
 	if OS.is_debug_build() and OS.get_cmdline_user_args().has("autotest_audio"):
 		Audio.play_tick()
 		Audio.play_exfiltrate()
@@ -112,22 +126,62 @@ func _build_background() -> void:
 	add_child(grid_bg)
 	grid_bg.draw.connect(_draw_grid_lines.bind(grid_bg))
 
+	packets_layer = Node2D.new()
+	packets_layer.z_index = -3
+	add_child(packets_layer)
+	packets_layer.draw.connect(_draw_packets.bind(packets_layer))
+	_init_packet_lanes()
+
 func _draw_circuit_decor(node: Node2D) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1337
-	for i in range(46):
+	var circuit_a := KHArt.tex("tiles", "circuit_a")
+	var circuit_b := KHArt.tex("tiles", "circuit_b")
+	var props_decor := ["cooling_fan", "satellite_dish", "relay_tower", "antenna", "neon_crate", "signal_orb"]
+	for i in range(30):
 		var x: float = rng.randf_range(0, 1280)
 		var y: float = rng.randf_range(0, 720)
 		var in_grid := x > GRID_ORIGIN.x - 20 and x < GRID_ORIGIN.x + GRID_COLS * CELL + 20 \
 			and y > GRID_ORIGIN.y - 20 and y < GRID_ORIGIN.y + GRID_ROWS * CELL + 20
 		if in_grid or y < 115 or x < 190:
 			continue
-		var len_x: float = rng.randf_range(18, 70)
-		var len_y: float = rng.randf_range(18, 70)
-		var col := Color8(20, 40, 50) if rng.randf() > 0.3 else Color8(16, 50, 42)
-		node.draw_line(Vector2(x, y), Vector2(x + len_x, y), col, 1.0)
-		node.draw_line(Vector2(x + len_x, y), Vector2(x + len_x, y + len_y), col, 1.0)
-		node.draw_circle(Vector2(x, y), 2.0, col)
+		var tile_tex := circuit_a if rng.randf() > 0.5 else circuit_b
+		if tile_tex:
+			node.draw_texture_rect(tile_tex, Rect2(Vector2(x, y), Vector2(32, 32)), false, Color(1, 1, 1, 0.5))
+	for i in range(7):
+		var x: float = rng.randf_range(210, 1240)
+		var y: float = rng.randf_range(130, 700)
+		var in_grid := x > GRID_ORIGIN.x - 40 and x < GRID_ORIGIN.x + GRID_COLS * CELL + 40 \
+			and y > GRID_ORIGIN.y - 40 and y < GRID_ORIGIN.y + GRID_ROWS * CELL + 40
+		if in_grid:
+			continue
+		var prop_tex := KHArt.tex("props", props_decor[rng.randi_range(0, props_decor.size() - 1)])
+		if prop_tex:
+			node.draw_texture_rect(prop_tex, Rect2(Vector2(x, y), Vector2(40, 40)), false, Color(1, 1, 1, 0.8))
+
+var packets_layer: Node2D
+var packet_lanes: Array = []
+
+func _init_packet_lanes() -> void:
+	packet_lanes.clear()
+	for c in range(2, GRID_COLS - 1, 3):
+		var x := GRID_ORIGIN.x + c * CELL
+		packet_lanes.append({"horizontal": false, "pos": x, "t": randf(), "speed": randf_range(0.08, 0.16)})
+	for r in range(1, GRID_ROWS, 2):
+		var y := GRID_ORIGIN.y + r * CELL
+		packet_lanes.append({"horizontal": true, "pos": y, "t": randf(), "speed": randf_range(0.06, 0.13)})
+
+func _draw_packets(node: Node2D) -> void:
+	var grid_end := GRID_ORIGIN + Vector2(GRID_COLS * CELL, GRID_ROWS * CELL)
+	for lane in packet_lanes:
+		var t: float = lane["t"]
+		var p: Vector2
+		if lane["horizontal"]:
+			p = Vector2(lerp(GRID_ORIGIN.x, grid_end.x, t), lane["pos"])
+		else:
+			p = Vector2(lane["pos"], lerp(GRID_ORIGIN.y, grid_end.y, t))
+		node.draw_circle(p, 2.0, Color8(57, 255, 106, 160))
+		node.draw_circle(p, 1.0, Color8(200, 255, 220, 220))
 
 func _draw_rig_panel(node: Node2D) -> void:
 	var r := Rect2(28, 140, 112, 420)
@@ -148,6 +202,18 @@ func _draw_rig_panel(node: Node2D) -> void:
 		node.draw_rect(Rect2(48 + i * 15, 354 - h, 8, h), COL_CYAN if i <= bars else Color8(20,50,55), true)
 
 func _draw_grid_lines(node: Node2D) -> void:
+	var grid_a := KHArt.tex("tiles", "grid_a")
+	var grid_b := KHArt.tex("tiles", "grid_b")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	if grid_a and grid_b:
+		var tiles_x := (GRID_COLS * CELL) / 32
+		var tiles_y := (GRID_ROWS * CELL) / 32
+		for ty in range(tiles_y):
+			for tx in range(tiles_x):
+				var tex := grid_a if rng.randf() > 0.12 else grid_b
+				var pos := GRID_ORIGIN + Vector2(tx * 32, ty * 32)
+				node.draw_texture_rect(tex, Rect2(pos, Vector2(32, 32)), false)
 	for c in range(GRID_COLS + 1):
 		var x := GRID_ORIGIN.x + c * CELL
 		node.draw_line(Vector2(x, GRID_ORIGIN.y), Vector2(x, GRID_ORIGIN.y + GRID_ROWS * CELL), COL_GRID_LINE, 1.0)
@@ -216,6 +282,7 @@ func _on_honeypot_expired(n: ServerNode) -> void:
 		return
 	trace_progress = max(0.0, trace_progress - 0.12 * GameState.honeypot_penalty_mult)
 	_spawn_floating_text(n.position, "ALARM TRIPPED", COL_MAGENTA)
+	VisualFX.play(fx_layer, n.position, "glitch", 8, 16.0, Color8(255, 83, 120))
 	_trigger_shake(4.0, 0.2)
 	Audio.play_denied()
 	_respawn_elsewhere(n)
@@ -227,14 +294,17 @@ func _build_hud() -> void:
 	var top_panel := Panel.new()
 	top_panel.position = Vector2(16, 12)
 	top_panel.size = Vector2(300, 100)
+	var hud_panel_tex := KHArt.tex("ui", "hud_counter")
+	if hud_panel_tex:
+		var psb := StyleBoxTexture.new()
+		psb.texture = hud_panel_tex
+		psb.set_texture_margin_all(8)
+		top_panel.add_theme_stylebox_override("panel", psb)
 	hud.add_child(top_panel)
 
-	credits_label = _make_label("◈ CREDITS: 0", COL_CYAN, Vector2(28, 20))
-	exploits_label = _make_label("※ EXPLOITS: 0", COL_MAGENTA, Vector2(28, 46))
-	zerodays_label = _make_label("♦ 0-DAYS: 0", COL_AMBER, Vector2(28, 72))
-	hud.add_child(credits_label)
-	hud.add_child(exploits_label)
-	hud.add_child(zerodays_label)
+	credits_label = _make_counter("credits", "CREDITS: 0", COL_CYAN, Vector2(28, 20))
+	exploits_label = _make_counter("exploit", "EXPLOITS: 0", COL_MAGENTA, Vector2(28, 46))
+	zerodays_label = _make_counter("key", "0-DAYS: 0", COL_AMBER, Vector2(28, 72))
 
 	trace_label = _make_label("UPLINK STABILITY", COL_GREEN, Vector2(460, 16))
 	hud.add_child(trace_label)
@@ -279,7 +349,7 @@ func _build_hud() -> void:
 		trait_lbl.add_theme_font_size_override("font_size", 12)
 		hud.add_child(trait_lbl)
 
-	var hint := _make_label("hold click to crack nodes · click a READY node to exfiltrate", Color8(120,130,150), Vector2(16, 690))
+	var hint := _make_label("move your mouse over the grid to crack and collect nodes automatically", Color8(120,130,150), Vector2(16, 690))
 	hud.add_child(hint)
 	_refresh_hud()
 	_build_summary_panel()
@@ -367,6 +437,31 @@ func _make_label(text: String, col: Color, pos: Vector2) -> Label:
 	l.add_theme_font_size_override("font_size", 18)
 	return l
 
+func _make_counter(icon_name: String, text: String, col: Color, pos: Vector2) -> Label:
+	var icon_tex := KHArt.tex("icons", icon_name)
+	if icon_tex:
+		var icon := TextureRect.new()
+		icon.texture = icon_tex
+		icon.position = pos + Vector2(0, 2)
+		icon.custom_minimum_size = Vector2(18, 18)
+		icon.size = Vector2(18, 18)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_SCALE
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hud.add_child(icon)
+	var l := _make_label(text, col, pos + Vector2(34, 0))
+	hud.add_child(l)
+	return l
+
+func _pop_counter(l: Label) -> void:
+	if l == null:
+		return
+	l.pivot_offset = Vector2(0, l.size.y / 2.0)
+	var tw := create_tween()
+	tw.tween_property(l, "scale", Vector2(1.18, 1.18), 0.07)
+	tw.tween_property(l, "scale", Vector2.ONE, 0.07)
+
 func _make_upgrade_button(text: String, pos: Vector2) -> Button:
 	var b := Button.new()
 	b.text = text
@@ -383,24 +478,8 @@ func _make_upgrade_button(text: String, pos: Vector2) -> Button:
 func _input(event: InputEvent) -> void:
 	if not round_active:
 		return
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			var clicked := _find_ready_node_at(event.position)
-			if clicked:
-				_exfiltrate(clicked)
-			else:
-				is_decrypting = true
-		else:
-			is_decrypting = false
-	elif event is InputEventMouseMotion:
+	if event is InputEventMouseMotion:
 		mouse_pos = event.position
-
-func _find_ready_node_at(pos: Vector2) -> ServerNode:
-	for n in cells:
-		if is_instance_valid(n) and n.state == ServerNode.State.READY:
-			if n.position.distance_to(pos) < 26:
-				return n
-	return null
 
 func _exfiltrate(n: ServerNode) -> void:
 	var gain_text: String
@@ -425,6 +504,7 @@ func _exfiltrate(n: ServerNode) -> void:
 		Audio.play_exfiltrate()
 	_spawn_burst(n.position, fx_col)
 	_spawn_floating_text(n.position, gain_text, fx_col)
+	VisualFX.play(fx_layer, n.position, "data_extract", 8, 18.0, fx_col)
 	_respawn_elsewhere(n)
 
 	var chain_chance: float = tier.get("chain_crack", 0.0)
@@ -433,6 +513,7 @@ func _exfiltrate(n: ServerNode) -> void:
 		if adjacent:
 			adjacent.add_progress(1.0)
 			_spawn_floating_text(adjacent.position, "CHAINED", COL_CYAN)
+			VisualFX.play(fx_layer, adjacent.position, "scan_pulse", 10, 20.0, COL_CYAN, 0.7)
 
 	_refresh_hud()
 
@@ -493,6 +574,11 @@ func _process(delta: float) -> void:
 			if any_in_range and tick_timer <= 0.0:
 				tick_timer = 0.14
 				Audio.play_tick()
+			scan_fx_timer -= delta
+			if scan_fx_timer <= 0.0:
+				scan_fx_timer = 0.42
+				var scan_scale: float = GameState.decrypt_radius / 32.0
+				VisualFX.play(fx_layer, mouse_pos, "scan_pulse", 10, 20.0, COL_CYAN, scan_scale)
 
 		if GameState.bot_level > 0:
 			bot_timer += delta
@@ -518,6 +604,13 @@ func _process(delta: float) -> void:
 	if rig_node:
 		rig_node.queue_redraw()
 
+	for lane in packet_lanes:
+		lane["t"] += delta * lane["speed"]
+		if lane["t"] > 1.0:
+			lane["t"] -= 1.0
+	if packets_layer:
+		packets_layer.queue_redraw()
+
 	if shake_t > 0.0:
 		shake_t -= delta
 		cam.offset = Vector2(randf_range(-shake_amp, shake_amp), randf_range(-shake_amp, shake_amp))
@@ -536,9 +629,18 @@ func _find_locked_node() -> ServerNode:
 	return locked[randi() % locked.size()]
 
 func _refresh_hud() -> void:
-	credits_label.text = "◈ CREDITS: %d" % GameState.credits
-	exploits_label.text = "※ EXPLOITS: %d" % GameState.exploits
-	zerodays_label.text = "♦ 0-DAYS: %d" % GameState.zerodays
+	if GameState.credits != _shown_credits:
+		_shown_credits = GameState.credits
+		_pop_counter(credits_label)
+	if GameState.exploits != _shown_exploits:
+		_shown_exploits = GameState.exploits
+		_pop_counter(exploits_label)
+	if GameState.zerodays != _shown_zerodays:
+		_shown_zerodays = GameState.zerodays
+		_pop_counter(zerodays_label)
+	credits_label.text = "CREDITS: %d" % GameState.credits
+	exploits_label.text = "EXPLOITS: %d" % GameState.exploits
+	zerodays_label.text = "0-DAYS: %d" % GameState.zerodays
 
 func _draw() -> void:
 	if is_decrypting:
