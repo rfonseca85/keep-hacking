@@ -4,6 +4,18 @@
 [ext_resource type="Texture2D" uid="uid://f0h0m17g6177" path="res://assets/game/icons/exploit.png" id="3"]
 [ext_resource type="Texture2D" uid="uid://xlcu3inp2x5a" path="res://assets/game/icons/key.png" id="4"]
 
+[sub_resource type="StyleBoxFlat" id="HudBacking1"]
+bg_color = Color(0.03, 0.04, 0.07, 0.72)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.3, 0.32, 0.6)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
 [node name="MainHUD" type="CanvasLayer" unique_id=409679317]
 
 [node name="TopPanel" type="Panel" parent="." unique_id=92154991]
@@ -28,7 +40,7 @@ unique_name_in_owner = true
 layout_mode = 0
 offset_left = 46.0
 offset_top = 7.0
-offset_right = 280.0
+offset_right = 240.0
 offset_bottom = 33.0
 theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
 theme_override_font_sizes/font_size = 18
@@ -50,7 +62,7 @@ unique_name_in_owner = true
 layout_mode = 0
 offset_left = 45.0
 offset_top = 32.0
-offset_right = 279.0
+offset_right = 243.0
 offset_bottom = 58.0
 theme_override_colors/font_color = Color(1, 0.180392, 0.572549, 1)
 theme_override_font_sizes/font_size = 18
@@ -72,11 +84,18 @@ unique_name_in_owner = true
 layout_mode = 0
 offset_left = 46.0
 offset_top = 56.0
-offset_right = 280.0
+offset_right = 239.0
 offset_bottom = 82.0
 theme_override_colors/font_color = Color(1, 0.721569, 0.188235, 1)
 theme_override_font_sizes/font_size = 18
 text = "0-DAYS: 0"
+
+[node name="TraceGroupPanel" type="Panel" parent="." unique_id=1799620011]
+offset_left = 392.0
+offset_top = 6.0
+offset_right = 888.0
+offset_bottom = 76.0
+theme_override_styles/panel = SubResource("HudBacking1")
 
 [node name="TraceLabel" type="Label" parent="." unique_id=1799620012]
 unique_name_in_owner = true
@@ -107,11 +126,18 @@ offset_bottom = 110.0
 theme_override_font_sizes/font_size = 12
 autowrap_mode = 3
 
+[node name="TierLabelPanel" type="Panel" parent="." unique_id=1173904193]
+offset_left = 966.0
+offset_top = 6.0
+offset_right = 1266.0
+offset_bottom = 42.0
+theme_override_styles/panel = SubResource("HudBacking1")
+
 [node name="TierLabel" type="Label" parent="." unique_id=1173904194]
 unique_name_in_owner = true
-offset_left = 972.0
-offset_top = 12.0
-offset_right = 1260.0
+offset_left = 974.0
+offset_top = 10.0
+offset_right = 1262.0
 offset_bottom = 36.0
 theme_override_font_sizes/font_size = 18
 text = "TIER"
@@ -134,15 +160,22 @@ offset_bottom = 684.0
 theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
 text = "SKILL TREE"
 
+[node name="HintPanel" type="Panel" parent="." unique_id=1634241924]
+offset_left = 10.0
+offset_top = 684.0
+offset_right = 906.0
+offset_bottom = 718.0
+theme_override_styles/panel = SubResource("HudBacking1")
+
 [node name="HintLabel" type="Label" parent="." unique_id=1634241925]
 unique_name_in_owner = true
 offset_left = 16.0
-offset_top = 690.0
+offset_top = 688.0
 offset_right = 900.0
 offset_bottom = 714.0
 theme_override_colors/font_color = Color(0.470588, 0.509804, 0.588235, 1)
 theme_override_font_sizes/font_size = 18
-text = "move your mouse over the grid to crack and collect nodes automatically"
+text = "Move your mouse over the grid to crack and collect nodes automatically"
 
 [node name="SummaryDim" type="ColorRect" parent="." unique_id=1841249621]
 unique_name_in_owner = true
