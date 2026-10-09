@@ -1,0 +1,521 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/DevMode.gd" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.035294, 0.043137, 0.066667, 0.980392)
+border_width_left = 3
+border_color = Color(1, 0.721569, 0.188235, 1)
+
+[node name="DevMode" type="CanvasLayer"]
+layer = 100
+script = ExtResource("1")
+
+[node name="FpsLabel" type="Label" parent="."]
+visible = false
+offset_left = 1180.0
+offset_top = 8.0
+offset_right = 1270.0
+offset_bottom = 28.0
+theme_override_colors/font_color = Color(0.223529, 1, 0.415686, 1)
+theme_override_font_sizes/font_size = 14
+text = "FPS: 0"
+
+[node name="DevPanel" type="Panel" parent="."]
+visible = false
+offset_left = 930.0
+offset_right = 1280.0
+offset_bottom = 720.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Scroll" type="ScrollContainer" parent="DevPanel"]
+layout_mode = 0
+offset_right = 350.0
+offset_bottom = 720.0
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="DevPanel/Scroll"]
+custom_minimum_size = Vector2(310, 0)
+offset_left = 20.0
+offset_top = 14.0
+offset_right = 330.0
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(1, 0.721569, 0.188235, 1)
+theme_override_font_sizes/font_size = 13
+text = "⚙ DEV TOOLS"
+
+[node name="Hint" type="Label" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0.470588, 0.509804, 0.568627, 1)
+theme_override_font_sizes/font_size = 8
+text = "testing aid — press ` to close"
+
+[node name="Sep_ECONOMY" type="HSeparator" parent="DevPanel/Scroll/Content"]
+
+[node name="Sec_ECONOMY" type="Label" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+theme_override_font_sizes/font_size = 10
+text = "ECONOMY"
+
+[node name="RowCredits" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowCredits"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Credits"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowCredits"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowCredits"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowExploits" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowExploits"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Exploits"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowExploits"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowExploits"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowZerodays" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowZerodays"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "0-Days"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowZerodays"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowZerodays"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowLifetime" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowLifetime"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Lifetime earned (skill reveal)"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowLifetime"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowLifetime"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="Sep_RUN" type="HSeparator" parent="DevPanel/Scroll/Content"]
+
+[node name="Sec_RUN" type="Label" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+theme_override_font_sizes/font_size = 10
+text = "RUN"
+
+[node name="CbInfiniteTime" type="CheckBox" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0.784314, 0.823529, 0.862745, 1)
+theme_override_font_sizes/font_size = 9
+text = "Infinite time (uplink never drops)"
+
+[node name="CbInfiniteUltimates" type="CheckBox" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0.784314, 0.823529, 0.862745, 1)
+theme_override_font_sizes/font_size = 9
+text = "Infinite ultimates (no cooldown)"
+
+[node name="BtnEndRound" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ End round now"
+
+[node name="BtnRestartRound" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Restart round (reload Main)"
+
+[node name="BtnForceHoneypot" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Force-spawn a honeypot"
+
+[node name="Sep_STATS" type="HSeparator" parent="DevPanel/Scroll/Content"]
+
+[node name="Sec_STATS" type="Label" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+theme_override_font_sizes/font_size = 10
+text = "STATS"
+
+[node name="RowDecryptSpeed" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowDecryptSpeed"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Decrypt speed"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowDecryptSpeed"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowDecryptSpeed"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowDecryptRadius" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowDecryptRadius"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Decrypt radius"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowDecryptRadius"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowDecryptRadius"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowBotLevel" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowBotLevel"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Bot level"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowBotLevel"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowBotLevel"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowYieldMult" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowYieldMult"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Yield multiplier"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowYieldMult"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowYieldMult"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowRoundDuration" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowRoundDuration"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Round duration (s)"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowRoundDuration"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowRoundDuration"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowMaxNodes" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowMaxNodes"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Max nodes on grid"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowMaxNodes"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowMaxNodes"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowWeakenMult" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowWeakenMult"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Weaken multiplier"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowWeakenMult"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowWeakenMult"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowHunterBots" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowHunterBots"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Hunter-bot count"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowHunterBots"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowHunterBots"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowRowPurge" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowRowPurge"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Row-purge level"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowRowPurge"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowRowPurge"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="RowUltimateLevel" type="HBoxContainer" parent="DevPanel/Scroll/Content"]
+theme_override_constants/separation = 5
+
+[node name="Label" type="Label" parent="DevPanel/Scroll/Content/RowUltimateLevel"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_colors/font_color = Color(0.666667, 0.705882, 0.752941, 1)
+theme_override_font_sizes/font_size = 9
+text = "Ultimate level"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Field" type="LineEdit" parent="DevPanel/Scroll/Content/RowUltimateLevel"]
+custom_minimum_size = Vector2(118, 22)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.862745, 0.941176, 1, 1)
+
+[node name="SetBtn" type="Button" parent="DevPanel/Scroll/Content/RowUltimateLevel"]
+custom_minimum_size = Vector2(50, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "SET"
+
+[node name="Sep_NETWORKSAndSKILLS" type="HSeparator" parent="DevPanel/Scroll/Content"]
+
+[node name="Sec_NETWORKSAndSKILLS" type="Label" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+theme_override_font_sizes/font_size = 10
+text = "NETWORKS & SKILLS"
+
+[node name="BtnUnlockHome" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Unlock: Home Network"
+
+[node name="BtnUnlockOffice" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Unlock: Office LAN"
+
+[node name="BtnUnlockCorp" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Unlock: Corp Network"
+
+[node name="BtnUnlockBotnet" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Unlock: Botnet Array"
+
+[node name="BtnUnlockAllNetworks" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Unlock all networks"
+
+[node name="BtnRevealSkills" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Reveal all skill nodes"
+
+[node name="BtnMaxSkills" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Max all skills (levels + effects)"
+
+[node name="Sep_NAVIGATE" type="HSeparator" parent="DevPanel/Scroll/Content"]
+
+[node name="Sec_NAVIGATE" type="Label" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+theme_override_font_sizes/font_size = 10
+text = "NAVIGATE"
+
+[node name="BtnGoNetworkSelect" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Go to Network Select"
+
+[node name="BtnGoMain" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Go to Main (game)"
+
+[node name="BtnGoSkillTree" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+text = "▸ Go to Skill Tree"
+
+[node name="Sep_DEBUG_VISUAL" type="HSeparator" parent="DevPanel/Scroll/Content"]
+
+[node name="Sec_DEBUG_VISUAL" type="Label" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+theme_override_font_sizes/font_size = 10
+text = "DEBUG / VISUAL"
+
+[node name="CbShowFps" type="CheckBox" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0.784314, 0.823529, 0.862745, 1)
+theme_override_font_sizes/font_size = 9
+text = "Show FPS counter"
+
+[node name="CbShowDebugInfo" type="CheckBox" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0.784314, 0.823529, 0.862745, 1)
+theme_override_font_sizes/font_size = 9
+text = "Show node debug info (state/progress)"
+
+[node name="CbDisableFx" type="CheckBox" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0.784314, 0.823529, 0.862745, 1)
+theme_override_font_sizes/font_size = 9
+text = "Disable particle/FX (perf testing)"
+
+[node name="Sep_RESET" type="HSeparator" parent="DevPanel/Scroll/Content"]
+
+[node name="Sec_RESET" type="Label" parent="DevPanel/Scroll/Content"]
+theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
+theme_override_font_sizes/font_size = 10
+text = "RESET"
+
+[node name="BtnResetSave" type="Button" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(310, 22)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(1, 0.352941, 0.470588, 1)
+text = "▸ Reset save to defaults"
+
+[node name="BottomSpacer" type="Control" parent="DevPanel/Scroll/Content"]
+custom_minimum_size = Vector2(0, 20)
