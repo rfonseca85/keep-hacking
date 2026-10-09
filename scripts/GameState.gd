@@ -3,6 +3,11 @@ extends Node
 var credits: int = 0
 var exploits: int = 0
 var zerodays: int = 0
+var lifetime_credits_earned: int = 0
+
+func add_credits(amount: int) -> void:
+	credits += amount
+	lifetime_credits_earned += amount
 
 var decrypt_speed: float = 0.55
 var decrypt_radius: float = 34.0
@@ -11,6 +16,12 @@ var yield_mult: float = 1.0
 var round_duration: float = 30.0
 var honeypot_penalty_mult: float = 1.0
 var max_nodes: int = 5
+var weaken_mult: float = 1.0
+var hunter_bot_count: int = 0
+var row_wipe_level: int = 0
+var ultimate_wipe_level: int = 0
+
+var skill_levels: Dictionary = {}
 
 var selected_tier: int = 0
 

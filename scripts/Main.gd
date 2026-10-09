@@ -29,6 +29,18 @@ var scan_fx_timer: float = 0.0
 var bot_timer: float = 0.0
 var tier: Dictionary
 
+var hunter_bots: Array = []
+var hunter_layer: Node2D
+const HUNTER_SPEED := 160.0
+const HUNTER_CRACK_SPEED := 0.6
+const HUNTER_RADIUS := 16.0
+
+var row_wipe_timer: float = 0.0
+
+var ultimate_cooldown: float = 0.0
+var ultimate_btn: Button
+var ultimate_cd_bar: ProgressBar
+
 var trace_progress: float = 1.0
 
 var round_active: bool = true
@@ -63,6 +75,11 @@ func _ready() -> void:
 		for a in OS.get_cmdline_user_args():
 			if a.begins_with("autotest_tier="):
 				GameState.selected_tier = int(a.split("=")[1])
+		if OS.get_cmdline_user_args().has("autotest_abilities"):
+			GameState.hunter_bot_count = 2
+			GameState.row_wipe_level = 2
+			GameState.ultimate_wipe_level = 2
+			GameState.max_nodes = 10
 	tier = GameState.TIERS[GameState.selected_tier]
 	round_start_credits = GameState.credits
 	round_start_exploits = GameState.exploits
@@ -77,9 +94,12 @@ func _ready() -> void:
 	_build_grid()
 	fx_layer = Node2D.new()
 	add_child(fx_layer)
+	hunter_layer = Node2D.new()
+	add_child(hunter_layer)
+	hunter_layer.draw.connect(_draw_hunters.bind(hunter_layer))
 	_build_hud()
 	if OS.is_debug_build() and OS.get_cmdline_user_args().has("autotest_endround"):
-		GameState.credits += 342
+		GameState.add_credits(342)
 		GameState.exploits += 3
 		GameState.zerodays += 1
 		get_tree().create_timer(0.5).timeout.connect(_end_round)
@@ -487,7 +507,7 @@ func _exfiltrate(n: ServerNode) -> void:
 	var was_honeypot := n.is_honeypot
 	if was_honeypot:
 		var amt := int(20 * float(tier["node_mult"]))
-		GameState.credits += amt
+		GameState.add_credits(amt)
 		gain_text = "+%d HONEYPOT" % amt
 		fx_col = Color8(255, 60, 60)
 		Audio.play_exploit()
@@ -498,7 +518,7 @@ func _exfiltrate(n: ServerNode) -> void:
 		Audio.play_exploit()
 	else:
 		var amt := int((2 + GameState.bot_level) * float(tier["node_mult"]) * GameState.yield_mult)
-		GameState.credits += amt
+		GameState.add_credits(amt)
 		gain_text = "+%d" % amt
 		fx_col = COL_GREEN
 		Audio.play_exfiltrate()
@@ -555,7 +575,7 @@ func _trigger_shake(amp: float, dur: float) -> void:
 
 func _process(delta: float) -> void:
 	if round_active:
-		var speed := GameState.decrypt_speed
+		var speed := GameState.decrypt_speed * GameState.weaken_mult
 		var radius := GameState.decrypt_radius
 
 		if is_decrypting:
@@ -590,6 +610,10 @@ func _process(delta: float) -> void:
 					var target := _find_locked_node()
 					if target:
 						target.add_progress(1.0)
+
+		_update_hunter_bots(delta)
+		_update_row_wipe(delta)
+		_update_ultimate(delta)
 
 		trace_progress -= delta / GameState.round_duration
 		if trace_progress <= 0.0:
@@ -627,6 +651,144 @@ func _find_locked_node() -> ServerNode:
 	if locked.is_empty():
 		return null
 	return locked[randi() % locked.size()]
+
+func _update_hunter_bots(delta: float) -> void:
+	while hunter_bots.size() < GameState.hunter_bot_count:
+		hunter_bots.append({"pos": GRID_ORIGIN + Vector2(-40, -40), "target": null})
+	while hunter_bots.size() > GameState.hunter_bot_count:
+		hunter_bots.pop_back()
+	if hunter_bots.is_empty():
+		return
+
+	var taken: Array[ServerNode] = []
+	for h in hunter_bots:
+		var target = h["target"]
+		if not (target is ServerNode) or not is_instance_valid(target) or target.state != ServerNode.State.LOCKED:
+			h["target"] = null
+		if h["target"] == null:
+			h["target"] = _find_nearest_locked(h["pos"], taken)
+		if h["target"] != null:
+			taken.append(h["target"])
+			var t: ServerNode = h["target"]
+			var to_target: Vector2 = t.position - h["pos"]
+			var dist: float = to_target.length()
+			if dist > HUNTER_RADIUS:
+				h["pos"] += to_target.normalized() * HUNTER_SPEED * delta
+			else:
+				t.add_progress(HUNTER_CRACK_SPEED * delta)
+	hunter_layer.queue_redraw()
+
+func _find_nearest_locked(from: Vector2, exclude: Array[ServerNode]) -> ServerNode:
+	var best: ServerNode = null
+	var best_dist := INF
+	for n in cells:
+		if not is_instance_valid(n) or n.state != ServerNode.State.LOCKED:
+			continue
+		if n in exclude:
+			continue
+		var d := n.position.distance_to(from)
+		if d < best_dist:
+			best_dist = d
+			best = n
+	return best
+
+func _draw_hunters(node: Node2D) -> void:
+	for h in hunter_bots:
+		var p: Vector2 = h["pos"]
+		node.draw_arc(p, HUNTER_RADIUS, 0, TAU, 20, Color8(255, 70, 90), 2.0)
+		node.draw_circle(p, 3.0, Color8(255, 70, 90))
+
+func _update_row_wipe(delta: float) -> void:
+	if GameState.row_wipe_level <= 0:
+		return
+	var interval: float = max(2.5, 6.0 - GameState.row_wipe_level * 1.5)
+	row_wipe_timer += delta
+	if row_wipe_timer < interval:
+		return
+	row_wipe_timer = 0.0
+	var rows_with_nodes: Dictionary = {}
+	for n in cells:
+		if not is_instance_valid(n):
+			continue
+		var row := int(round((n.position.y - GRID_ORIGIN.y - CELL / 2.0) / CELL))
+		if not rows_with_nodes.has(row):
+			rows_with_nodes[row] = []
+		rows_with_nodes[row].append(n)
+	if rows_with_nodes.is_empty():
+		return
+	var row_keys := rows_with_nodes.keys()
+	var chosen_row = row_keys[randi() % row_keys.size()]
+	var targets: Array = rows_with_nodes[chosen_row]
+	_trigger_shake(5.0, 0.25)
+	Audio.play_breach()
+	for n in targets:
+		if is_instance_valid(n):
+			VisualFX.play(fx_layer, n.position, "glitch", 8, 18.0, COL_CYAN, 0.6)
+			_exfiltrate(n)
+
+func _update_ultimate(delta: float) -> void:
+	if GameState.ultimate_wipe_level <= 0:
+		return
+	if ultimate_btn == null:
+		_build_ultimate_button()
+	if ultimate_cooldown > 0.0:
+		ultimate_cooldown -= delta
+		ultimate_cd_bar.value = 1.0 - max(0.0, ultimate_cooldown) / _ultimate_cooldown_max()
+		ultimate_btn.disabled = true
+	else:
+		ultimate_cd_bar.value = 1.0
+		ultimate_btn.disabled = false
+
+func _ultimate_cooldown_max() -> float:
+	return max(10.0, 30.0 - GameState.ultimate_wipe_level * 5.0)
+
+func _build_ultimate_button() -> void:
+	var icon_tex := KHArt.tex("icons", "power")
+	ultimate_btn = Button.new()
+	ultimate_btn.text = "  ZERO-DAY ULTIMATE"
+	ultimate_btn.position = Vector2(988, 444)
+	ultimate_btn.size = Vector2(260, 48)
+	if icon_tex:
+		ultimate_btn.icon = icon_tex
+		ultimate_btn.expand_icon = true
+	var usb := StyleBoxFlat.new()
+	usb.bg_color = Color8(20, 10, 24)
+	usb.border_color = Color8(216, 110, 255)
+	usb.set_border_width_all(2)
+	usb.set_corner_radius_all(0)
+	ultimate_btn.add_theme_stylebox_override("normal", usb)
+	ultimate_btn.add_theme_color_override("font_color", Color8(216, 110, 255))
+	ultimate_btn.pressed.connect(_on_ultimate_pressed)
+	hud.add_child(ultimate_btn)
+
+	ultimate_cd_bar = ProgressBar.new()
+	ultimate_cd_bar.position = Vector2(988, 496)
+	ultimate_cd_bar.size = Vector2(260, 8)
+	ultimate_cd_bar.min_value = 0
+	ultimate_cd_bar.max_value = 1
+	ultimate_cd_bar.value = 1
+	ultimate_cd_bar.show_percentage = false
+	var cdbg := StyleBoxFlat.new()
+	cdbg.bg_color = COL_PANEL
+	var cdfill := StyleBoxFlat.new()
+	cdfill.bg_color = Color8(216, 110, 255)
+	ultimate_cd_bar.add_theme_stylebox_override("background", cdbg)
+	ultimate_cd_bar.add_theme_stylebox_override("fill", cdfill)
+	hud.add_child(ultimate_cd_bar)
+
+func _on_ultimate_pressed() -> void:
+	if ultimate_cooldown > 0.0 or not round_active:
+		return
+	ultimate_cooldown = _ultimate_cooldown_max()
+	_trigger_shake(10.0, 0.5)
+	Audio.play_breach()
+	for n in cells.duplicate():
+		if not is_instance_valid(n):
+			continue
+		VisualFX.play(fx_layer, n.position, "data_extract", 8, 20.0, COL_GREEN)
+		if n.state == ServerNode.State.LOCKED:
+			n.add_progress(1.0)
+		_exfiltrate(n)
 
 func _refresh_hud() -> void:
 	if GameState.credits != _shown_credits:

@@ -2,27 +2,36 @@ extends Node2D
 
 const COL_BACKDROP := Color8(6, 8, 13)
 const COL_PANEL := Color8(12, 15, 22)
-const COL_LINE := Color8(40, 50, 60)
+const COL_LINE := Color8(50, 70, 60)
 const COL_GREEN := Color8(57, 255, 106)
 const COL_CYAN := Color8(0, 229, 255)
 const COL_DIM := Color8(90, 100, 115)
+const COL_LOCKED := Color8(255, 90, 120)
+
+const COLS := 4
+const ROWS := 4
+const COL_X := [170, 400, 630, 860]
+const ROW_Y := [160, 310, 460, 610]
 
 class SkillDef:
 	var id: String
 	var label: String
 	var icon: String
-	var pos: Vector2
+	var row: int
+	var col: int
 	var cost: int
 	var max_level: int
 	var apply: Callable
 	var desc: String
-	func _init(p_id, p_label, p_icon, p_pos, p_cost, p_max, p_apply, p_desc) -> void:
-		id = p_id; label = p_label; icon = p_icon; pos = p_pos
+	var reveal_threshold: int
+	func _init(p_id, p_label, p_icon, p_row, p_col, p_cost, p_max, p_apply, p_desc, p_reveal) -> void:
+		id = p_id; label = p_label; icon = p_icon; row = p_row; col = p_col
 		cost = p_cost; max_level = p_max; apply = p_apply; desc = p_desc
+		reveal_threshold = p_reveal
 
-var levels: Dictionary = {}
 var skills: Array = []
 var credits_lbl: Label
+var progress_lbl: Label
 var node_buttons: Dictionary = {}
 var node_icons: Dictionary = {}
 var preview_panel: Panel
@@ -31,11 +40,21 @@ var preview_body: Label
 var preview_cost: Label
 
 func _ready() -> void:
+	if OS.is_debug_build() and OS.get_cmdline_user_args().has("autotest_skills"):
+		GameState.lifetime_credits_earned = 5000
+		GameState.credits = 5000
+		GameState.skill_levels["speed1"] = 3
+		GameState.skill_levels["radius1"] = 5
 	Audio.play_ambient()
 	var bg := ColorRect.new()
 	bg.color = COL_BACKDROP
 	bg.size = Vector2(1280, 720)
 	add_child(bg)
+
+	var mesh := Node2D.new()
+	mesh.z_index = -2
+	add_child(mesh)
+	mesh.draw.connect(_draw_matrix_bg.bind(mesh))
 
 	_define_skills()
 	_draw_links()
@@ -43,51 +62,91 @@ func _ready() -> void:
 	_build_hud()
 	_build_preview_panel()
 
+func _pos(row: int, col: int) -> Vector2:
+	return Vector2(COL_X[col], ROW_Y[row])
+
 func _define_skills() -> void:
-	var center := Vector2(640, 380)
 	skills = [
-		SkillDef.new("speed1", "FASTER CRACK", "bolt", center + Vector2(-220, -120), 18, 5, func(): GameState.decrypt_speed += 0.2, "+0.2 crack speed per level"),
-		SkillDef.new("speed2", "BURST DECRYPT", "bolt2", center + Vector2(-380, -160), 90, 3, func(): GameState.decrypt_speed += 0.5, "+0.5 crack speed per level"),
-		SkillDef.new("radius1", "WIDER SCAN", "scan", center + Vector2(-220, 120), 22, 5, func(): GameState.decrypt_radius += 6.0, "+6 scan radius per level"),
-		SkillDef.new("radius2", "DEEP SCAN", "scan2", center + Vector2(-380, 160), 100, 3, func(): GameState.decrypt_radius += 14.0, "+14 scan radius per level"),
-		SkillDef.new("bot1", "DEPLOY BOT", "bot", center + Vector2(220, -120), 65, 4, func(): GameState.bot_level += 1, "+1 auto-crack bot per level"),
-		SkillDef.new("bot2", "BOTNET SWARM", "bot2", center + Vector2(380, -160), 275, 2, func(): GameState.bot_level += 2, "+2 auto-crack bots per level"),
-		SkillDef.new("yield1", "DATA COMPRESS", "cash", center + Vector2(220, 120), 30, 5, func(): GameState.yield_mult += 0.15, "+15% credits from every node, per level"),
-		SkillDef.new("yield2", "ZERO-DAY CACHE", "diamond", center + Vector2(380, 160), 440, 3, func(): GameState.zerodays += 1, "+1 0-day per level"),
-		SkillDef.new("duration1", "STEALTH ROUTING", "clock", center + Vector2(0, -230), 40, 4, func(): GameState.round_duration += 4.0, "+4s of uplink stability before connection drops"),
-		SkillDef.new("forensics1", "COUNTER-FORENSICS", "shield", center + Vector2(0, 230), 80, 3, func(): GameState.honeypot_penalty_mult = max(0.2, GameState.honeypot_penalty_mult - 0.25), "-25% alarm penalty from tripped honeypots"),
-		SkillDef.new("footprint1", "NETWORK FOOTPRINT", "grid", center + Vector2(230, 0), 35, 5, func(): GameState.max_nodes += 2, "+2 machines visible on the grid at once, per level"),
+		SkillDef.new("speed1", "FASTER CRACK", "bolt", 0, 0, 18, 5,
+			func(): GameState.decrypt_speed += 0.2,
+			"+0.2 crack speed per level", 0),
+		SkillDef.new("radius1", "WIDER SCAN", "scan", 0, 1, 22, 5,
+			func(): GameState.decrypt_radius += 6.0,
+			"+6 scan radius per level", 0),
+		SkillDef.new("yield1", "DATA COMPRESS", "credits", 0, 2, 30, 5,
+			func(): GameState.yield_mult += 0.15,
+			"+15% credits from every node, per level", 15),
+		SkillDef.new("footprint1", "NETWORK FOOTPRINT", "network", 0, 3, 35, 5,
+			func(): GameState.max_nodes += 2,
+			"+2 machines visible on the grid at once, per level", 20),
+
+		SkillDef.new("duration1", "STEALTH ROUTING", "stealth", 1, 0, 40, 4,
+			func(): GameState.round_duration += 4.0,
+			"+4s of uplink stability before connection drops", 30),
+		SkillDef.new("bot1", "DEPLOY BOT", "bot", 1, 1, 65, 4,
+			func(): GameState.bot_level += 1,
+			"+1 auto-crack bot per level", 50),
+		SkillDef.new("weaken_all", "WEAKEN PROTOCOL", "cpu", 1, 2, 50, 5,
+			func(): GameState.weaken_mult += 0.1,
+			"-10% crack time needed on every node, per level", 40),
+		SkillDef.new("forensics1", "COUNTER-FORENSICS", "shield", 1, 3, 80, 3,
+			func(): GameState.honeypot_penalty_mult = max(0.2, GameState.honeypot_penalty_mult - 0.25),
+			"-25% alarm penalty from tripped honeypots", 65),
+
+		SkillDef.new("speed2", "BURST DECRYPT", "boost", 2, 0, 90, 3,
+			func(): GameState.decrypt_speed += 0.5,
+			"+0.5 crack speed per level", 90),
+		SkillDef.new("radius2", "DEEP SCAN", "radar", 2, 1, 100, 3,
+			func(): GameState.decrypt_radius += 14.0,
+			"+14 scan radius per level", 100),
+		SkillDef.new("bot2", "BOTNET SWARM", "upload", 2, 2, 275, 2,
+			func(): GameState.bot_level += 2,
+			"+2 auto-crack bots per level", 220),
+		SkillDef.new("yield2", "ZERO-DAY CACHE", "data", 2, 3, 440, 3,
+			func(): GameState.zerodays += 1,
+			"+1 0-day per level", 360),
+
+		SkillDef.new("hunter_bot", "HUNTER-KILLER", "target", 3, 0, 150, 3,
+			func(): GameState.hunter_bot_count += 1,
+			"+1 autonomous red scanner that hunts and cracks the nearest locked node on its own", 130),
+		SkillDef.new("row_wipe", "LINE PURGE", "code", 3, 1, 200, 3,
+			func(): GameState.row_wipe_level += 1,
+			"automatically wipes a full row of the grid on a timer — faster per level", 170),
+		SkillDef.new("ultimate_wipe", "ZERO-DAY ULTIMATE", "power", 3, 2, 350, 3,
+			func(): GameState.ultimate_wipe_level += 1,
+			"unlocks a clickable ability in the HUD: instantly exfiltrate every node on the board — shorter cooldown per level", 300),
+		SkillDef.new("filler1", "CLASSIFIED", "lock", 3, 3, 0, 0,
+			func(): pass,
+			"requires further research", 999999999),
 	]
-	for s in skills:
-		levels[s.id] = 0
+
+func _draw_matrix_bg(node: Node2D) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	for i in range(60):
+		var x: float = rng.randf_range(0, 1280)
+		var y: float = rng.randf_range(0, 720)
+		if rng.randf() < 0.1:
+			node.draw_rect(Rect2(x, y, 2, 2), Color8(30, 50, 42), true)
 
 func _draw_links() -> void:
 	var line_node := Node2D.new()
+	line_node.z_index = -1
 	add_child(line_node)
-	var center := Vector2(640, 380)
 	line_node.draw.connect(func():
-		line_node.draw_circle(center, 36, COL_PANEL)
-		line_node.draw_arc(center, 36, 0, TAU, 32, COL_GREEN, 2.0)
-		for s in skills:
-			var parent_pos: Vector2 = center
-			for other in skills:
-				if other.pos.distance_to(s.pos) < 180 and other != s and other.pos.distance_to(center) < s.pos.distance_to(center):
-					parent_pos = other.pos
-			line_node.draw_line(center if parent_pos == center else parent_pos, s.pos, COL_LINE, 2.0)
+		for c in range(COLS):
+			line_node.draw_line(_pos(0, c), _pos(ROWS - 1, c), COL_LINE, 2.0)
+		line_node.draw_line(_pos(0, 0), _pos(0, COLS - 1), COL_LINE, 2.0)
 	)
 
 func _build_nodes() -> void:
-	var center_lbl := _label("◆", COL_GREEN, 28, Vector2(632, 366))
-	add_child(center_lbl)
 	for s in skills:
+		var p := _pos(s.row, s.col)
 		var btn := Button.new()
-		btn.text = "\n\n%s\nLv0" % s.label
-		btn.position = s.pos - Vector2(55, 40)
-		btn.size = Vector2(110, 80)
+		btn.position = p - Vector2(52, 46)
+		btn.size = Vector2(104, 92)
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
-		btn.add_theme_stylebox_override("normal", _skill_stylebox("skill_available"))
-		btn.add_theme_color_override("font_color", COL_CYAN)
-		btn.add_theme_font_size_override("font_size", 11)
+		btn.add_theme_font_size_override("font_size", 10)
 		btn.pressed.connect(_on_node_pressed.bind(s, btn))
 		btn.mouse_entered.connect(_show_preview.bind(s))
 		btn.mouse_exited.connect(_hide_preview)
@@ -96,20 +155,27 @@ func _build_nodes() -> void:
 
 		var icon_node := _SkillIcon.new()
 		icon_node.icon_key = s.icon
-		icon_node.col = COL_CYAN
-		icon_node.position = s.pos - Vector2(0, 16)
+		icon_node.max_level = s.max_level
+		icon_node.position = p - Vector2(0, 32)
 		add_child(icon_node)
 		node_icons[s.id] = icon_node
 
 		_refresh_node(s, btn)
 
+func _is_revealed(s) -> bool:
+	return GameState.lifetime_credits_earned >= s.reveal_threshold
+
 func _on_node_pressed(s, btn: Button) -> void:
-	if levels[s.id] >= s.max_level:
+	if not _is_revealed(s):
+		Audio.play_denied()
 		return
-	var cost: int = int(s.cost * pow(1.5, levels[s.id]))
+	var lvl: int = GameState.skill_levels.get(s.id, 0)
+	if lvl >= s.max_level:
+		return
+	var cost: int = int(s.cost * pow(1.5, lvl))
 	if GameState.credits >= cost:
 		GameState.credits -= cost
-		levels[s.id] += 1
+		GameState.skill_levels[s.id] = lvl + 1
 		s.apply.call()
 		_refresh_node(s, btn)
 		_refresh_hud()
@@ -119,27 +185,44 @@ func _on_node_pressed(s, btn: Button) -> void:
 		Audio.play_denied()
 
 func _refresh_node(s, btn: Button) -> void:
-	var lvl: int = levels[s.id]
 	var icon_node: Node2D = node_icons[s.id]
+	var revealed := _is_revealed(s)
+	if not revealed:
+		btn.text = "\n\n\n???"
+		btn.add_theme_stylebox_override("normal", _skill_stylebox("locked"))
+		btn.add_theme_color_override("font_color", COL_LOCKED)
+		icon_node.visible = false
+		icon_node.level = 0
+		return
+
+	icon_node.visible = true
+	var lvl: int = GameState.skill_levels.get(s.id, 0)
+	icon_node.level = lvl
+	if s.max_level == 0:
+		btn.text = "\n\n\n%s" % s.label
+		btn.add_theme_stylebox_override("normal", _skill_stylebox("locked"))
+		btn.add_theme_color_override("font_color", COL_DIM)
+		icon_node.visible = false
+		return
+
 	if lvl >= s.max_level:
-		btn.text = "\n\n%s\nMAX" % s.label
-		btn.add_theme_stylebox_override("normal", _skill_stylebox("skill_active"))
+		btn.text = "\n\n\n%s\nMAX" % s.label
+		btn.add_theme_stylebox_override("normal", _skill_stylebox("active"))
 		btn.add_theme_color_override("font_color", COL_GREEN)
 		icon_node.col = COL_GREEN
 	else:
 		var cost: int = int(s.cost * pow(1.5, lvl))
-		btn.text = "\n\n%s\nLv%d (%d)" % [s.label, lvl, cost]
-		var affordable := GameState.credits >= cost
+		btn.text = "\n\n\n%s\nLv%d (%d)" % [s.label, lvl, cost]
 		if lvl > 0:
-			btn.add_theme_stylebox_override("normal", _skill_stylebox("skill_active"))
+			btn.add_theme_stylebox_override("normal", _skill_stylebox("active"))
 			btn.add_theme_color_override("font_color", COL_GREEN)
 			icon_node.col = COL_GREEN
-		elif affordable:
-			btn.add_theme_stylebox_override("normal", _skill_stylebox("skill_available"))
+		elif GameState.credits >= cost:
+			btn.add_theme_stylebox_override("normal", _skill_stylebox("available"))
 			btn.add_theme_color_override("font_color", COL_CYAN)
 			icon_node.col = COL_CYAN
 		else:
-			btn.add_theme_stylebox_override("normal", _skill_stylebox("skill_locked"))
+			btn.add_theme_stylebox_override("normal", _skill_stylebox("available"))
 			btn.add_theme_color_override("font_color", COL_DIM)
 			icon_node.col = COL_DIM
 	icon_node.queue_redraw()
@@ -150,12 +233,12 @@ func _skill_stylebox(state: String) -> StyleBox:
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(0)
 	match state:
-		"skill_active":
+		"active":
 			sb.border_color = COL_GREEN
 			sb.bg_color = Color8(10, 24, 18)
-		"skill_locked":
-			sb.border_color = Color8(52, 62, 76)
-			sb.bg_color = Color8(9, 11, 16)
+		"locked":
+			sb.border_color = COL_LOCKED
+			sb.bg_color = Color8(16, 10, 13)
 		_:
 			sb.border_color = COL_CYAN
 			sb.bg_color = Color8(10, 18, 26)
@@ -168,6 +251,8 @@ func _build_hud() -> void:
 	add_child(bottom)
 	credits_lbl = _label("◈ %d CREDITS" % GameState.credits, COL_CYAN, 18, Vector2(24, 16))
 	bottom.add_child(credits_lbl)
+	progress_lbl = _label("", Color8(140, 150, 165), 12, Vector2(220, 20))
+	bottom.add_child(progress_lbl)
 
 	var resume_btn := Button.new()
 	resume_btn.text = "◂ BACK TO GAME"
@@ -200,26 +285,43 @@ func _build_hud() -> void:
 
 func _build_preview_panel() -> void:
 	preview_panel = Panel.new()
-	preview_panel.position = Vector2(500, 20)
-	preview_panel.size = Vector2(280, 90)
+	preview_panel.position = Vector2(470, 20)
+	preview_panel.size = Vector2(340, 100)
 	preview_panel.visible = false
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color8(18, 22, 30)
 	sb.border_color = COL_CYAN
 	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(4)
+	sb.set_corner_radius_all(0)
 	preview_panel.add_theme_stylebox_override("panel", sb)
 	add_child(preview_panel)
 
 	preview_title = _label("", COL_CYAN, 15, Vector2(12, 8))
 	preview_panel.add_child(preview_title)
-	preview_body = _label("", Color8(200, 210, 220), 12, Vector2(12, 32))
+	preview_body = Label.new()
+	preview_body.position = Vector2(12, 30)
+	preview_body.size = Vector2(316, 40)
+	preview_body.autowrap_mode = TextServer.AUTOWRAP_WORD
+	preview_body.add_theme_color_override("font_color", Color8(200, 210, 220))
+	preview_body.add_theme_font_size_override("font_size", 12)
 	preview_panel.add_child(preview_body)
-	preview_cost = _label("", Color8(255, 184, 48), 13, Vector2(12, 60))
+	preview_cost = _label("", Color8(255, 184, 48), 13, Vector2(12, 74))
 	preview_panel.add_child(preview_cost)
 
 func _show_preview(s) -> void:
-	var lvl: int = levels[s.id]
+	if not _is_revealed(s):
+		preview_title.text = "??? CLASSIFIED"
+		preview_body.text = "reach %d lifetime credits earned to reveal this node" % s.reveal_threshold
+		preview_cost.text = "progress: %d / %d" % [GameState.lifetime_credits_earned, s.reveal_threshold]
+		preview_panel.visible = true
+		return
+	if s.max_level == 0:
+		preview_title.text = s.label
+		preview_body.text = s.desc
+		preview_cost.text = ""
+		preview_panel.visible = true
+		return
+	var lvl: int = GameState.skill_levels.get(s.id, 0)
 	preview_title.text = s.label
 	preview_body.text = s.desc
 	if lvl >= s.max_level:
@@ -234,6 +336,15 @@ func _hide_preview() -> void:
 
 func _refresh_hud() -> void:
 	credits_lbl.text = "◈ %d CREDITS" % GameState.credits
+	var revealed_count := 0
+	for s in skills:
+		if _is_revealed(s) and s.max_level > 0:
+			revealed_count += 1
+	var total := 0
+	for s in skills:
+		if s.max_level > 0:
+			total += 1
+	progress_lbl.text = "%d / %d NODES REVEALED  ·  LIFETIME: %d◈" % [revealed_count, total, GameState.lifetime_credits_earned]
 	for s in skills:
 		if node_buttons.has(s.id):
 			_refresh_node(s, node_buttons[s.id])
@@ -247,60 +358,23 @@ func _label(text: String, col: Color, size: int, pos: Vector2) -> Label:
 	return l
 
 class _SkillIcon extends Node2D:
-	const ICON_MAP := {
-		"bolt": "bolt", "bolt2": "bolt",
-		"scan": "scan", "scan2": "scan",
-		"bot": "bot", "bot2": "bot",
-		"cash": "credits", "diamond": "data",
-		"clock": "stealth", "shield": "shield",
-		"grid": "network",
-	}
 	var icon_key: String
 	var col: Color = Color8(0, 229, 255)
+	var level: int = 0
+	var max_level: int = 0
 	var _tex: Texture2D
 	func _ready() -> void:
-		var mapped: String = ICON_MAP.get(icon_key, icon_key)
-		_tex = KHArt.tex("icons", mapped)
+		_tex = KHArt.tex("icons", icon_key)
 		queue_redraw()
 	func _draw() -> void:
 		if _tex:
 			draw_texture_rect(_tex, Rect2(-11, -11, 22, 22), false, col)
-			return
-		match icon_key:
-			"bolt":
-				draw_colored_polygon(PackedVector2Array([Vector2(2,-10), Vector2(-6,2), Vector2(-1,2), Vector2(-3,10), Vector2(6,-2), Vector2(1,-2)]), col)
-			"bolt2":
-				draw_colored_polygon(PackedVector2Array([Vector2(-4,-10), Vector2(-10,2), Vector2(-6,2), Vector2(-8,10), Vector2(0,-2), Vector2(-4,-2)]), col)
-				draw_colored_polygon(PackedVector2Array([Vector2(8,-10), Vector2(2,2), Vector2(6,2), Vector2(4,10), Vector2(12,-2), Vector2(8,-2)]), col)
-			"scan":
-				draw_arc(Vector2.ZERO, 9, 0, TAU, 20, col, 2.0)
-				draw_circle(Vector2.ZERO, 2, col)
-			"scan2":
-				draw_arc(Vector2.ZERO, 10, 0, TAU, 20, col, 2.0)
-				draw_arc(Vector2.ZERO, 5, 0, TAU, 16, col, 1.5)
-				draw_circle(Vector2.ZERO, 1.5, col)
-			"bot":
-				draw_rect(Rect2(-9, -7, 18, 14), col, false, 2.0)
-				draw_circle(Vector2(-4, 0), 1.5, col)
-				draw_circle(Vector2(4, 0), 1.5, col)
-				draw_line(Vector2(0, -7), Vector2(0, -12), col, 1.5)
-			"bot2":
-				draw_rect(Rect2(-13, -7, 12, 14), col, false, 1.5)
-				draw_rect(Rect2(1, -7, 12, 14), col, false, 1.5)
-			"cash":
-				draw_arc(Vector2.ZERO, 9, 0, TAU, 20, col, 2.0)
-				draw_string(ThemeDB.fallback_font, Vector2(-4, 5), "$", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, col)
-			"diamond":
-				draw_colored_polygon(PackedVector2Array([Vector2(0,-10), Vector2(9,-1), Vector2(0,10), Vector2(-9,-1)]), col)
-			"clock":
-				draw_arc(Vector2.ZERO, 9, 0, TAU, 20, col, 2.0)
-				draw_line(Vector2.ZERO, Vector2(0, -6), col, 1.5)
-				draw_line(Vector2.ZERO, Vector2(4, 2), col, 1.5)
-			"shield":
-				draw_colored_polygon(PackedVector2Array([Vector2(0,-10), Vector2(8,-6), Vector2(8,2), Vector2(0,10), Vector2(-8,2), Vector2(-8,-6)]), Color(col.r, col.g, col.b, 0.25))
-				var pts := PackedVector2Array([Vector2(0,-10), Vector2(8,-6), Vector2(8,2), Vector2(0,10), Vector2(-8,2), Vector2(-8,-6), Vector2(0,-10)])
-				draw_polyline(pts, col, 2.0)
-			"grid":
-				for gx in range(2):
-					for gy in range(2):
-						draw_rect(Rect2(-9 + gx * 10, -9 + gy * 10, 7, 7), col, false, 1.5)
+		if max_level > 0:
+			var pip_w := 7.0
+			var gap := 3.0
+			var total_w := max_level * pip_w + (max_level - 1) * gap
+			var start_x := -total_w / 2.0
+			for i in range(max_level):
+				var filled := i < level
+				var c := col if filled else Color8(50, 58, 68)
+				draw_rect(Rect2(start_x + i * (pip_w + gap), 16, pip_w, 5), c, true)
