@@ -4,6 +4,7 @@ const GRID_COLS := 12
 const GRID_ROWS := 7
 const CELL := 64
 const GRID_ORIGIN := Vector2(160, 140)
+const MIN_NODE_DIST_CELLS := 2
 
 const COL_BACKDROP := Color8(6, 8, 13)
 const COL_GRID_LINE := Color8(16, 22, 32)
@@ -27,7 +28,7 @@ var tick_timer: float = 0.0
 var bot_timer: float = 0.0
 var tier: Dictionary
 
-var trace_progress: float = 0.0
+var trace_progress: float = 1.0
 
 var round_active: bool = true
 var round_start_credits: int = 0
@@ -38,6 +39,7 @@ var is_decrypting: bool = false
 var mouse_pos: Vector2 = Vector2.ZERO
 
 var cells: Array[ServerNode] = []
+var all_cell_positions: Array[Vector2] = []
 
 var credits_label: Label
 var exploits_label: Label
@@ -45,9 +47,6 @@ var zerodays_label: Label
 var tier_label: Label
 var trace_bar: ProgressBar
 var trace_label: Label
-var upgrade_speed_btn: Button
-var upgrade_radius_btn: Button
-var upgrade_bot_btn: Button
 
 var summary_panel: Panel
 var summary_credits_lbl: Label
@@ -159,16 +158,52 @@ func _draw_grid_lines(node: Node2D) -> void:
 func _build_grid() -> void:
 	nodes_layer = Node2D.new()
 	add_child(nodes_layer)
+	all_cell_positions.clear()
 	for r in range(GRID_ROWS):
 		for c in range(GRID_COLS):
-			if randf() < 0.22:
-				continue
-			var n := ServerNode.new()
-			n.position = GRID_ORIGIN + Vector2((c + 0.5) * CELL, (r + 0.5) * CELL)
-			n.reset_locked(randf() < 0.12)
-			n.honeypot_expired.connect(_on_honeypot_expired)
-			nodes_layer.add_child(n)
-			cells.append(n)
+			all_cell_positions.append(GRID_ORIGIN + Vector2((c + 0.5) * CELL, (r + 0.5) * CELL))
+	for i in range(GameState.max_nodes):
+		_spawn_node_at_free_position([])
+
+func _active_positions(exclude: ServerNode) -> Array[Vector2]:
+	var result: Array[Vector2] = []
+	for n in cells:
+		if is_instance_valid(n) and n != exclude:
+			result.append(n.position)
+	return result
+
+func _pick_free_position(avoid: Array[Vector2], exclude: ServerNode = null) -> Vector2:
+	var occupied := _active_positions(exclude)
+	occupied.append_array(avoid)
+	var min_dist := float(MIN_NODE_DIST_CELLS) * CELL
+	while min_dist >= 0.0:
+		var candidates := all_cell_positions.duplicate()
+		candidates.shuffle()
+		for pos in candidates:
+			var ok := true
+			for o in occupied:
+				if pos.distance_to(o) < min_dist:
+					ok = false
+					break
+			if ok:
+				return pos
+		min_dist -= CELL
+	return all_cell_positions[randi() % all_cell_positions.size()]
+
+func _spawn_node_at_free_position(avoid: Array[Vector2]) -> ServerNode:
+	var n := ServerNode.new()
+	n.position = _pick_free_position(avoid)
+	n.reset_locked(_spawn_vulnerable(), _spawn_honeypot())
+	n.honeypot_expired.connect(_on_honeypot_expired)
+	nodes_layer.add_child(n)
+	cells.append(n)
+	return n
+
+func _respawn_elsewhere(n: ServerNode) -> void:
+	var old_pos := n.position
+	cells.erase(n)
+	n.queue_free()
+	_spawn_node_at_free_position([old_pos])
 
 func _spawn_vulnerable() -> bool:
 	return randf() < 0.12
@@ -179,11 +214,11 @@ func _spawn_honeypot() -> bool:
 func _on_honeypot_expired(n: ServerNode) -> void:
 	if not round_active:
 		return
-	trace_progress = min(1.0, trace_progress + 0.12 * GameState.honeypot_penalty_mult)
+	trace_progress = max(0.0, trace_progress - 0.12 * GameState.honeypot_penalty_mult)
 	_spawn_floating_text(n.position, "ALARM TRIPPED", COL_MAGENTA)
 	_trigger_shake(4.0, 0.2)
 	Audio.play_denied()
-	n.reset_locked(_spawn_vulnerable(), _spawn_honeypot())
+	_respawn_elsewhere(n)
 
 func _build_hud() -> void:
 	hud = CanvasLayer.new()
@@ -201,7 +236,7 @@ func _build_hud() -> void:
 	hud.add_child(exploits_label)
 	hud.add_child(zerodays_label)
 
-	trace_label = _make_label("BACKDOOR CHARGE", COL_GREEN, Vector2(460, 16))
+	trace_label = _make_label("UPLINK STABILITY", COL_GREEN, Vector2(460, 16))
 	hud.add_child(trace_label)
 
 	trace_bar = ProgressBar.new()
@@ -209,7 +244,7 @@ func _build_hud() -> void:
 	trace_bar.size = Vector2(480, 24)
 	trace_bar.min_value = 0
 	trace_bar.max_value = 1
-	trace_bar.value = 0
+	trace_bar.value = 1
 	trace_bar.show_percentage = false
 	var sb_bg := StyleBoxFlat.new()
 	sb_bg.bg_color = COL_PANEL
@@ -222,16 +257,6 @@ func _build_hud() -> void:
 	hud.add_child(trace_bar)
 
 	var btn_y := 640
-	upgrade_speed_btn = _make_upgrade_button("CRACK SPEED+ (%d)" % GameState.cost_speed, Vector2(16, btn_y))
-	upgrade_radius_btn = _make_upgrade_button("RADIUS+ (%d)" % GameState.cost_radius, Vector2(260, btn_y))
-	upgrade_bot_btn = _make_upgrade_button("DEPLOY BOT (%d)" % GameState.cost_bot, Vector2(504, btn_y))
-	upgrade_speed_btn.pressed.connect(_on_upgrade_speed)
-	upgrade_radius_btn.pressed.connect(_on_upgrade_radius)
-	upgrade_bot_btn.pressed.connect(_on_upgrade_bot)
-	hud.add_child(upgrade_speed_btn)
-	hud.add_child(upgrade_radius_btn)
-	hud.add_child(upgrade_bot_btn)
-
 	var skill_btn := _make_upgrade_button("SKILL TREE", Vector2(972, btn_y))
 	skill_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/SkillTree.tscn"))
 	hud.add_child(skill_btn)
@@ -276,7 +301,7 @@ func _build_summary_panel() -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	summary_panel.add_child(title)
 	var sub := Label.new()
-	sub.text = "backdoor fully charged — here's\nwhat you pulled out this run"
+	sub.text = "connection lost — here's\nwhat you pulled out this run"
 	sub.position = Vector2(18, 46)
 	sub.size = Vector2(264, 40)
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -319,9 +344,9 @@ func _build_summary_panel() -> void:
 func _end_round() -> void:
 	round_active = false
 	is_decrypting = false
-	trace_progress = 1.0
-	trace_bar.value = 1.0
-	trace_label.text = "BACKDOOR CHARGE"
+	trace_progress = 0.0
+	trace_bar.value = 0.0
+	trace_label.text = "CONNECTION LOST"
 	_trigger_shake(8.0, 0.4)
 	Audio.play_breach()
 
@@ -398,10 +423,9 @@ func _exfiltrate(n: ServerNode) -> void:
 		gain_text = "+%d" % amt
 		fx_col = COL_GREEN
 		Audio.play_exfiltrate()
-	trace_progress = min(1.0, trace_progress + 0.06)
 	_spawn_burst(n.position, fx_col)
 	_spawn_floating_text(n.position, gain_text, fx_col)
-	n.reset_locked(_spawn_vulnerable(), _spawn_honeypot())
+	_respawn_elsewhere(n)
 
 	var chain_chance: float = tier.get("chain_crack", 0.0)
 	if not was_honeypot and randf() < chain_chance:
@@ -455,7 +479,7 @@ func _process(delta: float) -> void:
 
 		if is_decrypting:
 			var any_in_range := false
-			for n in cells:
+			for n in cells.duplicate():
 				if not is_instance_valid(n):
 					continue
 				if n.position.distance_to(mouse_pos) > radius:
@@ -481,10 +505,14 @@ func _process(delta: float) -> void:
 					if target:
 						target.add_progress(1.0)
 
-		trace_progress += delta / GameState.round_duration
-		if trace_progress >= 1.0:
+		trace_progress -= delta / GameState.round_duration
+		if trace_progress <= 0.0:
+			trace_progress = 0.0
 			_end_round()
 		trace_bar.value = trace_progress
+		var fill_sb := trace_bar.get_theme_stylebox("fill") as StyleBoxFlat
+		if fill_sb:
+			fill_sb.bg_color = COL_GREEN.lerp(Color8(255, 60, 60), 1.0 - trace_progress)
 
 	rig_t += delta
 	if rig_node:
@@ -511,39 +539,6 @@ func _refresh_hud() -> void:
 	credits_label.text = "◈ CREDITS: %d" % GameState.credits
 	exploits_label.text = "※ EXPLOITS: %d" % GameState.exploits
 	zerodays_label.text = "♦ 0-DAYS: %d" % GameState.zerodays
-
-func _on_upgrade_speed() -> void:
-	if GameState.credits >= GameState.cost_speed:
-		GameState.credits -= GameState.cost_speed
-		GameState.decrypt_speed += 0.25
-		GameState.cost_speed = int(GameState.cost_speed * 1.6)
-		upgrade_speed_btn.text = "CRACK SPEED+ (%d)" % GameState.cost_speed
-		Audio.play_upgrade()
-		_refresh_hud()
-	else:
-		Audio.play_denied()
-
-func _on_upgrade_radius() -> void:
-	if GameState.credits >= GameState.cost_radius:
-		GameState.credits -= GameState.cost_radius
-		GameState.decrypt_radius += 8.0
-		GameState.cost_radius = int(GameState.cost_radius * 1.6)
-		upgrade_radius_btn.text = "RADIUS+ (%d)" % GameState.cost_radius
-		Audio.play_upgrade()
-		_refresh_hud()
-	else:
-		Audio.play_denied()
-
-func _on_upgrade_bot() -> void:
-	if GameState.credits >= GameState.cost_bot:
-		GameState.credits -= GameState.cost_bot
-		GameState.bot_level += 1
-		GameState.cost_bot = int(GameState.cost_bot * 1.8)
-		upgrade_bot_btn.text = "DEPLOY BOT (%d)" % GameState.cost_bot
-		Audio.play_upgrade()
-		_refresh_hud()
-	else:
-		Audio.play_denied()
 
 func _draw() -> void:
 	if is_decrypting:

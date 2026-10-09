@@ -46,16 +46,17 @@ func _ready() -> void:
 func _define_skills() -> void:
 	var center := Vector2(640, 380)
 	skills = [
-		SkillDef.new("speed1", "FASTER CRACK", "bolt", center + Vector2(-220, -120), 30, 5, func(): GameState.decrypt_speed += 0.2, "+0.2 crack speed per level"),
-		SkillDef.new("speed2", "BURST DECRYPT", "bolt2", center + Vector2(-380, -160), 150, 3, func(): GameState.decrypt_speed += 0.5, "+0.5 crack speed per level"),
-		SkillDef.new("radius1", "WIDER SCAN", "scan", center + Vector2(-220, 120), 40, 5, func(): GameState.decrypt_radius += 6.0, "+6 scan radius per level"),
-		SkillDef.new("radius2", "DEEP SCAN", "scan2", center + Vector2(-380, 160), 180, 3, func(): GameState.decrypt_radius += 14.0, "+14 scan radius per level"),
-		SkillDef.new("bot1", "DEPLOY BOT", "bot", center + Vector2(220, -120), 120, 4, func(): GameState.bot_level += 1, "+1 auto-crack bot per level"),
-		SkillDef.new("bot2", "BOTNET SWARM", "bot2", center + Vector2(380, -160), 500, 2, func(): GameState.bot_level += 2, "+2 auto-crack bots per level"),
-		SkillDef.new("yield1", "DATA COMPRESS", "cash", center + Vector2(220, 120), 60, 5, func(): GameState.yield_mult += 0.15, "+15% credits from every node, per level"),
-		SkillDef.new("yield2", "ZERO-DAY CACHE", "diamond", center + Vector2(380, 160), 800, 3, func(): GameState.zerodays += 1, "+1 0-day per level"),
-		SkillDef.new("duration1", "STEALTH ROUTING", "clock", center + Vector2(0, -230), 80, 4, func(): GameState.round_duration += 4.0, "+4s per run before the backdoor fully charges"),
-		SkillDef.new("forensics1", "COUNTER-FORENSICS", "shield", center + Vector2(0, 230), 150, 3, func(): GameState.honeypot_penalty_mult = max(0.2, GameState.honeypot_penalty_mult - 0.25), "-25% alarm penalty from tripped honeypots"),
+		SkillDef.new("speed1", "FASTER CRACK", "bolt", center + Vector2(-220, -120), 18, 5, func(): GameState.decrypt_speed += 0.2, "+0.2 crack speed per level"),
+		SkillDef.new("speed2", "BURST DECRYPT", "bolt2", center + Vector2(-380, -160), 90, 3, func(): GameState.decrypt_speed += 0.5, "+0.5 crack speed per level"),
+		SkillDef.new("radius1", "WIDER SCAN", "scan", center + Vector2(-220, 120), 22, 5, func(): GameState.decrypt_radius += 6.0, "+6 scan radius per level"),
+		SkillDef.new("radius2", "DEEP SCAN", "scan2", center + Vector2(-380, 160), 100, 3, func(): GameState.decrypt_radius += 14.0, "+14 scan radius per level"),
+		SkillDef.new("bot1", "DEPLOY BOT", "bot", center + Vector2(220, -120), 65, 4, func(): GameState.bot_level += 1, "+1 auto-crack bot per level"),
+		SkillDef.new("bot2", "BOTNET SWARM", "bot2", center + Vector2(380, -160), 275, 2, func(): GameState.bot_level += 2, "+2 auto-crack bots per level"),
+		SkillDef.new("yield1", "DATA COMPRESS", "cash", center + Vector2(220, 120), 30, 5, func(): GameState.yield_mult += 0.15, "+15% credits from every node, per level"),
+		SkillDef.new("yield2", "ZERO-DAY CACHE", "diamond", center + Vector2(380, 160), 440, 3, func(): GameState.zerodays += 1, "+1 0-day per level"),
+		SkillDef.new("duration1", "STEALTH ROUTING", "clock", center + Vector2(0, -230), 40, 4, func(): GameState.round_duration += 4.0, "+4s of uplink stability before connection drops"),
+		SkillDef.new("forensics1", "COUNTER-FORENSICS", "shield", center + Vector2(0, 230), 80, 3, func(): GameState.honeypot_penalty_mult = max(0.2, GameState.honeypot_penalty_mult - 0.25), "-25% alarm penalty from tripped honeypots"),
+		SkillDef.new("footprint1", "NETWORK FOOTPRINT", "grid", center + Vector2(230, 0), 35, 5, func(): GameState.max_nodes += 2, "+2 machines visible on the grid at once, per level"),
 	]
 	for s in skills:
 		levels[s.id] = 0
@@ -110,7 +111,7 @@ func _build_nodes() -> void:
 func _on_node_pressed(s, btn: Button) -> void:
 	if levels[s.id] >= s.max_level:
 		return
-	var cost: int = int(s.cost * pow(1.6, levels[s.id]))
+	var cost: int = int(s.cost * pow(1.5, levels[s.id]))
 	if GameState.credits >= cost:
 		GameState.credits -= cost
 		levels[s.id] += 1
@@ -136,7 +137,7 @@ func _refresh_node(s, btn: Button) -> void:
 		btn.add_theme_color_override("font_color", COL_GREEN)
 		icon_node.col = COL_GREEN
 	else:
-		var cost: int = int(s.cost * pow(1.6, lvl))
+		var cost: int = int(s.cost * pow(1.5, lvl))
 		btn.text = "\n\n%s\nLv%d (%d)" % [s.label, lvl, cost]
 	icon_node.queue_redraw()
 
@@ -204,7 +205,7 @@ func _show_preview(s) -> void:
 	if lvl >= s.max_level:
 		preview_cost.text = "MAX LEVEL (%d/%d)" % [lvl, s.max_level]
 	else:
-		var cost: int = int(s.cost * pow(1.6, lvl))
+		var cost: int = int(s.cost * pow(1.5, lvl))
 		preview_cost.text = "%d → %d   cost: %d credits" % [lvl, lvl + 1, cost]
 	preview_panel.visible = true
 
@@ -262,3 +263,7 @@ class _SkillIcon extends Node2D:
 				draw_colored_polygon(PackedVector2Array([Vector2(0,-10), Vector2(8,-6), Vector2(8,2), Vector2(0,10), Vector2(-8,2), Vector2(-8,-6)]), Color(col.r, col.g, col.b, 0.25))
 				var pts := PackedVector2Array([Vector2(0,-10), Vector2(8,-6), Vector2(8,2), Vector2(0,10), Vector2(-8,2), Vector2(-8,-6), Vector2(0,-10)])
 				draw_polyline(pts, col, 2.0)
+			"grid":
+				for gx in range(2):
+					for gy in range(2):
+						draw_rect(Rect2(-9 + gx * 10, -9 + gy * 10, 7, 7), col, false, 1.5)

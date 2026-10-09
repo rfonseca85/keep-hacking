@@ -10,10 +10,7 @@ var bot_level: int = 0
 var yield_mult: float = 1.0
 var round_duration: float = 30.0
 var honeypot_penalty_mult: float = 1.0
-
-var cost_speed: int = 35
-var cost_radius: int = 45
-var cost_bot: int = 120
+var max_nodes: int = 5
 
 var selected_tier: int = 0
 
