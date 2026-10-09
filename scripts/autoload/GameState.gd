@@ -9,7 +9,7 @@ func add_credits(amount: int) -> void:
 	credits += amount
 	lifetime_credits_earned += amount
 
-var decrypt_speed: float = 0.55
+var decrypt_speed: float = 0.715
 var decrypt_radius: float = 34.0
 var bot_level: int = 0
 var yield_mult: float = 1.0
@@ -20,6 +20,7 @@ var weaken_mult: float = 1.0
 var hunter_bot_count: int = 0
 var row_wipe_level: int = 0
 var ultimate_wipe_level: int = 0
+var link_mesh_level: int = 0
 
 var skill_levels: Dictionary = {}
 
@@ -65,7 +66,7 @@ func reset_all() -> void:
 	exploits = 0
 	zerodays = 0
 	lifetime_credits_earned = 0
-	decrypt_speed = 0.55
+	decrypt_speed = 0.715
 	decrypt_radius = 34.0
 	bot_level = 0
 	yield_mult = 1.0
@@ -76,6 +77,7 @@ func reset_all() -> void:
 	hunter_bot_count = 0
 	row_wipe_level = 0
 	ultimate_wipe_level = 0
+	link_mesh_level = 0
 	skill_levels = {}
 	selected_tier = 0
 	unlocked_tiers = [true, false, false, false]

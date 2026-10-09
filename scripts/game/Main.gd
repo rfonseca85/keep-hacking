@@ -10,6 +10,9 @@ const MIN_NODE_DIST_CELLS := 2
 const LINK_MIN_DIST := 75.0
 const LINK_MAX_DIST := 250.0
 const CHAIN_HACK_RATE := 0.25
+const BASE_LINK_CHANCE := 0.22
+const LINK_CHANCE_PER_MESH_LEVEL := 0.14
+const ROW_WIPE_WARN_SEC := 0.9
 
 const COL_BACKDROP := Color8(6, 8, 13)
 const COL_GRID_LINE := Color8(16, 22, 32)
@@ -24,6 +27,7 @@ const COL_PANEL := Color8(12, 15, 22)
 @onready var rig_node: Node2D = $World/RigNode
 @onready var packets_layer: Node2D = $World/PacketsLayer
 @onready var fx_layer: Node2D = $FxLayer
+@onready var skill_fx_layer: Node2D = $SkillFxLayer
 @onready var hunter_layer: Node2D = $HunterLayer
 @onready var nodes_layer: Node2D = $NodesLayer
 @onready var hud: CanvasLayer = $HUD
@@ -73,6 +77,8 @@ var mouse_pos: Vector2 = Vector2.ZERO
 var cells: Array[ServerNode] = []
 var all_cell_positions: Array[Vector2] = []
 var _node_neighbors: Dictionary = {}
+var network_links: Array = []
+var _row_wipe_pending: Dictionary = {}
 
 var _shown_credits: int = -1
 var _shown_exploits: int = -1
@@ -98,6 +104,7 @@ func _ready() -> void:
 	_setup_background_layers()
 	_build_grid()
 	hunter_layer.draw.connect(_draw_hunters.bind(hunter_layer))
+	skill_fx_layer.draw.connect(_draw_skill_fx.bind(skill_fx_layer))
 	_setup_hud()
 	if OS.is_debug_build() and OS.get_cmdline_user_args().has("autotest_endround"):
 		GameState.add_credits(342)
@@ -233,15 +240,25 @@ func _build_grid() -> void:
 		_spawn_node_at_free_position([])
 	_rebuild_node_links()
 
+func _link_spawn_chance() -> float:
+	return clampf(BASE_LINK_CHANCE + GameState.link_mesh_level * LINK_CHANCE_PER_MESH_LEVEL, 0.0, 0.88)
+
+
 func _rebuild_node_links() -> void:
 	_node_neighbors.clear()
+	network_links.clear()
 	var nodes: Array[ServerNode] = []
 	for n in cells:
 		if is_instance_valid(n):
 			nodes.append(n)
 			_node_neighbors[n.get_instance_id()] = []
+	var chance := _link_spawn_chance()
+	var rng := RandomNumberGenerator.new()
 	for i in range(nodes.size()):
 		var a: ServerNode = nodes[i]
+		rng.seed = int(a.position.x) * 73856093 ^ int(a.position.y) * 19349663
+		if rng.randf() > chance:
+			continue
 		var nearest: ServerNode = null
 		var best := LINK_MAX_DIST
 		for j in range(nodes.size()):
@@ -254,6 +271,16 @@ func _rebuild_node_links() -> void:
 				best = dist
 		if nearest != null:
 			_add_node_link(a, nearest)
+			network_links.append({"a": a, "b": nearest})
+
+
+func _grid_row_rect(row: int) -> Rect2:
+	return Rect2(
+		GRID_ORIGIN.x,
+		GRID_ORIGIN.y + float(row) * CELL,
+		float(GRID_COLS) * CELL,
+		float(CELL)
+	)
 
 func _add_node_link(a: ServerNode, b: ServerNode) -> void:
 	var id_a := a.get_instance_id()
@@ -536,6 +563,8 @@ func _process(delta: float) -> void:
 					var target := _find_locked_node()
 					if target:
 						target.add_progress(1.0)
+						VisualFX.play(fx_layer, target.position, "scan_pulse", 8, 16.0, COL_CYAN, 0.65)
+						_spawn_floating_text(target.position, "BOT", COL_CYAN)
 
 		_update_hunter_bots(delta)
 		_update_row_wipe(delta)
@@ -631,11 +660,24 @@ func _find_nearest_locked(from: Vector2, exclude: Array[ServerNode]) -> ServerNo
 func _draw_hunters(node: Node2D) -> void:
 	for h in hunter_bots:
 		var p: Vector2 = h["pos"]
+		var target = h.get("target")
+		if target is ServerNode and is_instance_valid(target):
+			var tp: Vector2 = target.position
+			node.draw_line(p, tp, Color(1.0, 0.25, 0.35, 0.35), 2.0)
+			if p.distance_to(tp) <= HUNTER_RADIUS + 4.0:
+				node.draw_circle(tp, 14.0, Color(1.0, 0.2, 0.3, 0.15))
 		node.draw_arc(p, HUNTER_RADIUS, 0, TAU, 20, Color8(255, 70, 90), 2.0)
 		node.draw_circle(p, 3.0, Color8(255, 70, 90))
 
 func _update_row_wipe(delta: float) -> void:
 	if GameState.row_wipe_level <= 0:
+		return
+	if not _row_wipe_pending.is_empty():
+		_row_wipe_pending["t"] = float(_row_wipe_pending.get("t", 0.0)) + delta
+		skill_fx_layer.queue_redraw()
+		if float(_row_wipe_pending["t"]) >= float(_row_wipe_pending["warn"]):
+			_execute_row_wipe(_row_wipe_pending["targets"])
+			_row_wipe_pending.clear()
 		return
 	var interval: float = max(2.5, 6.0 - GameState.row_wipe_level * 1.5)
 	row_wipe_timer += delta
@@ -653,14 +695,54 @@ func _update_row_wipe(delta: float) -> void:
 	if rows_with_nodes.is_empty():
 		return
 	var row_keys := rows_with_nodes.keys()
-	var chosen_row = row_keys[randi() % row_keys.size()]
-	var targets: Array = rows_with_nodes[chosen_row]
-	_trigger_shake(5.0, 0.25)
+	var chosen_row: int = row_keys[randi() % row_keys.size()]
+	_row_wipe_pending = {
+		"row": chosen_row,
+		"targets": rows_with_nodes[chosen_row],
+		"t": 0.0,
+		"warn": ROW_WIPE_WARN_SEC,
+	}
+	Audio.play_denied()
+	skill_fx_layer.queue_redraw()
+
+
+func _execute_row_wipe(targets: Array) -> void:
+	_trigger_shake(8.0, 0.35)
 	Audio.play_breach()
+	_play_skill_flash(Color8(255, 40, 55), 0.45)
 	for n in targets:
 		if is_instance_valid(n):
-			VisualFX.play(fx_layer, n.position, "glitch", 8, 18.0, COL_CYAN, 0.6)
+			VisualFX.play(fx_layer, n.position, "glitch", 10, 22.0, Color8(255, 50, 70), 0.85)
 			_exfiltrate(n)
+	skill_fx_layer.queue_redraw()
+
+
+func _draw_skill_fx(node: Node2D) -> void:
+	if _row_wipe_pending.is_empty():
+		return
+	var row: int = _row_wipe_pending["row"]
+	var rect := _grid_row_rect(row)
+	var t: float = float(_row_wipe_pending["t"])
+	var flash := (sin(t * 20.0) + 1.0) * 0.5
+	var fill := Color(1.0, 0.08, 0.12, 0.18 + flash * 0.42)
+	var border := Color(1.0, 0.25, 0.3, 0.65 + flash * 0.35)
+	node.draw_rect(rect, fill, true)
+	node.draw_rect(rect, border, false, 3.0 + flash * 2.0)
+	var pad := 6.0
+	var inner := rect.grow(-pad)
+	node.draw_rect(inner, Color(1.0, 0.1, 0.15, 0.08 + flash * 0.12), false, 2.0)
+
+
+func _play_skill_flash(color: Color, duration: float = 0.4) -> void:
+	var flash := ColorRect.new()
+	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.color = Color(color.r, color.g, color.b, 0.0)
+	hud.add_child(flash)
+	var tw := create_tween()
+	tw.tween_property(flash, "color:a", 0.5, duration * 0.22)
+	tw.tween_property(flash, "color:a", 0.0, duration * 0.78)
+	tw.tween_callback(flash.queue_free)
 
 func _update_ultimate(delta: float) -> void:
 	if GameState.ultimate_wipe_level <= 0:
@@ -710,6 +792,7 @@ func _on_ultimate_pressed() -> void:
 		return
 	ultimate_cooldown = _ultimate_cooldown_max()
 	_trigger_shake(10.0, 0.5)
+	_play_skill_flash(Color8(200, 80, 255), 0.55)
 	Audio.play_breach()
 	for n in cells.duplicate():
 		if not is_instance_valid(n):

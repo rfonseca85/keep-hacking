@@ -261,19 +261,19 @@ max_level = 3
 description = "unlocks a clickable ability in the HUD: instantly exfiltrate every node on the board — shorter cooldown per level"
 reveal_threshold = 300
 
-[node name="filler1" parent="SkillNodesLayer" unique_id=544671606 instance=ExtResource("3_skill")]
+[node name="mesh_link" parent="SkillNodesLayer" unique_id=544671606 instance=ExtResource("3_skill")]
 anchors_preset = 0
 offset_left = 904.0
 offset_top = 536.0
 offset_right = 1036.0
 offset_bottom = 654.0
-skill_id = "filler1"
-display_name = "CLASSIFIED"
-icon_key = "lock"
-base_cost = 0
-max_level = 0
-description = "requires further research"
-reveal_threshold = 999999999
+skill_id = "mesh_link"
+display_name = "MESH UPLINK"
+icon_key = "network"
+base_cost = 120
+max_level = 4
+description = "+14% chance machines spawn network cables to neighbors, per level"
+reveal_threshold = 140
 
 [node name="Title" type="Label" parent="." unique_id=1137683071]
 layout_mode = 0

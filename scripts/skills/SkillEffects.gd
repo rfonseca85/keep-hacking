@@ -34,6 +34,8 @@ static func apply(skill_id: String) -> void:
 			GameState.row_wipe_level += 1
 		"ultimate_wipe":
 			GameState.ultimate_wipe_level += 1
+		"mesh_link":
+			GameState.link_mesh_level += 1
 		"filler1":
 			pass
 		_:

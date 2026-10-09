@@ -124,36 +124,31 @@ func _draw() -> void:
         Vector2(GRID_POS.x+GRID_SIZE.x-2.0, scan_y),
         Color(0.09,0.88,0.86,0.10), 2.0)
 
-    # Short, sparse signal links between actual current nodes (visual only).
-    var nodes: Array[ServerNode] = _nodes()
-    for i in range(nodes.size()):
-        var a: ServerNode = nodes[i]
-        var nearest: ServerNode = null
-        var best: float = 250.0
-        for j in range(nodes.size()):
-            if i == j:
-                continue
-            var b: ServerNode = nodes[j]
-            var dist: float = a.position.distance_to(b.position)
-            if dist >= 75.0 and dist < best:
-                nearest = b
-                best = dist
-        if nearest == null:
+    # Cables mirror gameplay links from Main.network_links (sparse + mesh skill).
+    var links: Array = []
+    if game != null and game.get("network_links") is Array:
+        links = game.network_links
+    var link_i := 0
+    for link in links:
+        if typeof(link) != TYPE_DICTIONARY:
             continue
-        if a.get_instance_id() > nearest.get_instance_id():
+        var a: ServerNode = link.get("a")
+        var b: ServerNode = link.get("b")
+        if a == null or b == null or not is_instance_valid(a) or not is_instance_valid(b):
             continue
         var p: Vector2 = a.position
-        var q: Vector2 = nearest.position
+        var q: Vector2 = b.position
         var a_red: bool = bool(a.is_honeypot) and int(a.state) == 1
         var color: Color = RED if a_red else CYAN
         var cable_core := Color(color.r, color.g, color.b, 0.42)
         var cable_sheath := Color(color.r * 0.35, color.g * 0.35, color.b * 0.35, 0.55)
         draw_line(p, q, cable_sheath, 6.0)
         draw_line(p, q, cable_core, 3.5)
-        var phase: float = fposmod(_time * 0.35 + float(i) * 0.27, 1.0)
+        var phase: float = fposmod(_time * 0.35 + float(link_i) * 0.27, 1.0)
         var point: Vector2 = p.lerp(q, phase)
         draw_circle(point, 5.0, Color(color.r, color.g, color.b, 0.12))
         draw_circle(point, 2.2, Color(color.r, color.g, color.b, 0.95))
+        link_i += 1
 
     # Short celebration rings only after real LOCKED -> READY transitions.
     for burst in _bursts:

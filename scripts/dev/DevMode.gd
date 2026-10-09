@@ -14,7 +14,7 @@ const SKILL_MAX := {
 	"speed1": 5, "radius1": 5, "yield1": 5, "footprint1": 5,
 	"duration1": 4, "bot1": 4, "weaken_all": 5, "forensics1": 3,
 	"speed2": 3, "radius2": 3, "bot2": 2, "yield2": 3,
-	"hunter_bot": 3, "row_wipe": 3, "ultimate_wipe": 3,
+	"hunter_bot": 3, "row_wipe": 3, "ultimate_wipe": 3, "mesh_link": 4,
 }
 
 @export_group("Panel (edit in scene)")
