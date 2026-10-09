@@ -1,4 +1,5 @@
-extends CanvasLayer
+@tool
+extends Control
 
 var infinite_time: bool = false
 var infinite_ultimates: bool = false
@@ -19,18 +20,25 @@ const SKILL_MAX := {
 @export_group("Panel (edit in scene)")
 @export var panel_style: StyleBoxFlat
 
-@onready var fps_lbl: Label = $FpsLabel
-@onready var panel: Panel = $DevPanel
-@onready var cb_infinite_time: CheckBox = $DevPanel/Scroll/Content/CbInfiniteTime
-@onready var cb_infinite_ultimates: CheckBox = $DevPanel/Scroll/Content/CbInfiniteUltimates
-@onready var cb_show_fps: CheckBox = $DevPanel/Scroll/Content/CbShowFps
-@onready var cb_show_debug_info: CheckBox = $DevPanel/Scroll/Content/CbShowDebugInfo
-@onready var cb_disable_fx: CheckBox = $DevPanel/Scroll/Content/CbDisableFx
+@onready var editor_frame: TextureRect = $EditorFrame
+@onready var overlay_layer: CanvasLayer = $OverlayLayer
+@onready var backdrop: ColorRect = $OverlayLayer/Backdrop
+@onready var fps_lbl: Label = $OverlayLayer/FpsLabel
+@onready var panel: Panel = $OverlayLayer/DevPanel
+@onready var cb_infinite_time: CheckBox = $OverlayLayer/DevPanel/Scroll/Content/CbInfiniteTime
+@onready var cb_infinite_ultimates: CheckBox = $OverlayLayer/DevPanel/Scroll/Content/CbInfiniteUltimates
+@onready var cb_show_fps: CheckBox = $OverlayLayer/DevPanel/Scroll/Content/CbShowFps
+@onready var cb_show_debug_info: CheckBox = $OverlayLayer/DevPanel/Scroll/Content/CbShowDebugInfo
+@onready var cb_disable_fx: CheckBox = $OverlayLayer/DevPanel/Scroll/Content/CbDisableFx
 
 func _ready() -> void:
+	editor_frame.visible = Engine.is_editor_hint()
 	if panel_style:
 		panel.add_theme_stylebox_override("panel", panel_style)
-	panel.visible = false
+	if Engine.is_editor_hint():
+		_set_menu_visible(true)
+		return
+	_set_menu_visible(false)
 	set_process(true)
 	set_process_unhandled_input(true)
 	_wire_checkboxes()
@@ -41,19 +49,27 @@ func _ready() -> void:
 	if OS.is_debug_build() and OS.get_cmdline_user_args().has("autotest_devmode"):
 		get_tree().create_timer(0.4).timeout.connect(func():
 			menu_open = true
-			panel.visible = true
+			_set_menu_visible(true)
 			_refresh_fields()
 		)
 
+func _set_menu_visible(open: bool) -> void:
+	panel.visible = open
+	backdrop.visible = open
+	menu_open = open
+
 func _unhandled_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_QUOTELEFT:
-		menu_open = not menu_open
-		panel.visible = menu_open
+		_set_menu_visible(not menu_open)
 		if menu_open:
 			_refresh_fields()
 		get_viewport().set_input_as_handled()
 
 func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	if show_fps:
 		fps_lbl.visible = true
 		fps_lbl.text = "FPS: %d" % Engine.get_frames_per_second()
