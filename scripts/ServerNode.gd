@@ -4,14 +4,14 @@ class_name ServerNode
 enum State { LOCKED, READY }
 
 const SIZE := Vector2(52, 52)
-const COL_BG := Color8(18, 22, 32)
-const COL_BORDER_LOCKED := Color8(0, 194, 255)
-const COL_BORDER_VULN := Color8(255, 46, 146)
-const COL_BORDER_READY := Color8(57, 255, 106)
-const COL_BORDER_HONEYPOT := Color8(255, 60, 60)
-const COL_BAR_BG := Color8(10, 12, 18)
-const COL_BAR_FILL := Color8(0, 229, 255)
-const COL_TEXT := Color8(220, 240, 255)
+@export_group("Colors")
+@export var col_bg: Color = Color8(18, 22, 32)
+@export var col_border_locked: Color = Color8(0, 194, 255)
+@export var col_border_vuln: Color = Color8(255, 46, 146)
+@export var col_border_ready: Color = Color8(57, 255, 106)
+@export var col_border_honeypot: Color = Color8(255, 60, 60)
+@export var col_bar_bg: Color = Color8(10, 12, 18)
+@export var col_bar_fill: Color = Color8(0, 229, 255)
 
 const HONEYPOT_LIFETIME := 2.6
 
@@ -72,33 +72,33 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var r := Rect2(-SIZE / 2.0, SIZE)
-	draw_rect(r, COL_BG, true)
+	draw_rect(r, col_bg, true)
 
-	var border_col := COL_BORDER_LOCKED
+	var border_col := col_border_locked
 	if state == State.READY:
 		if is_honeypot:
 			var pulse := (sin(pulse_t * 14.0) + 1.0) * 0.5
-			border_col = COL_BORDER_HONEYPOT.lerp(Color8(255,255,255), pulse * 0.3)
+			border_col = col_border_honeypot.lerp(Color8(255,255,255), pulse * 0.3)
 		else:
 			var pulse := (sin(pulse_t * 6.0) + 1.0) * 0.5
-			border_col = COL_BORDER_READY.lerp(Color8(255,255,255), pulse * 0.4)
+			border_col = col_border_ready.lerp(Color8(255,255,255), pulse * 0.4)
 	elif is_vulnerable:
-		border_col = COL_BORDER_VULN
+		border_col = col_border_vuln
 
 	_draw_device(border_col)
 	draw_rect(r, border_col, false, 2.0)
 
 	if state == State.LOCKED:
 		var bar_r := Rect2(-SIZE.x / 2.0 + 4, SIZE.y / 2.0 - 10, SIZE.x - 8, 5)
-		draw_rect(bar_r, COL_BAR_BG, true)
+		draw_rect(bar_r, col_bar_bg, true)
 		var fill_r := Rect2(bar_r.position, Vector2(bar_r.size.x * progress, bar_r.size.y))
-		draw_rect(fill_r, COL_BAR_FILL, true)
+		draw_rect(fill_r, col_bar_fill, true)
 		_draw_status_icon(lock_tex, border_col)
 	else:
 		_draw_status_icon(unlock_tex, border_col)
 		if is_honeypot:
 			var remain := 1.0 - (honeypot_t / HONEYPOT_LIFETIME)
-			draw_arc(Vector2.ZERO, 24, -PI / 2.0, -PI / 2.0 + TAU * remain, 20, COL_BORDER_HONEYPOT, 2.0)
+			draw_arc(Vector2.ZERO, 24, -PI / 2.0, -PI / 2.0 + TAU * remain, 20, col_border_honeypot, 2.0)
 
 	_draw_leds(border_col)
 

@@ -1,5 +1,7 @@
 extends Node2D
 
+const SERVER_NODE_SCENE := preload("res://scenes/ServerNode.tscn")
+
 const GRID_COLS := 12
 const GRID_ROWS := 7
 const CELL := 64
@@ -14,15 +16,31 @@ const COL_MAGENTA := Color8(255, 46, 146)
 const COL_AMBER := Color8(255, 184, 48)
 const COL_PANEL := Color8(12, 15, 22)
 
-var nodes_layer: Node2D
-var grid_bg: Node2D
-var hud: CanvasLayer
-var fx_layer: Node2D
-var cam: Camera2D
+@onready var cam: Camera2D = $Camera2D
+@onready var grid_bg: Node2D = $World/GridBg
+@onready var rig_node: Node2D = $World/RigNode
+@onready var packets_layer: Node2D = $World/PacketsLayer
+@onready var fx_layer: Node2D = $FxLayer
+@onready var hunter_layer: Node2D = $HunterLayer
+@onready var nodes_layer: Node2D = $NodesLayer
+@onready var hud: CanvasLayer = $HUD
+
+@onready var credits_label: Label = $HUD/TopPanel/CreditsLabel
+@onready var exploits_label: Label = $HUD/TopPanel/ExploitsLabel
+@onready var zerodays_label: Label = $HUD/TopPanel/ZerodaysLabel
+@onready var tier_label: Label = $HUD/TierLabel
+@onready var trace_bar: ProgressBar = $HUD/TraceBar
+@onready var trace_label: Label = $HUD/TraceLabel
+@onready var trait_label: Label = $HUD/TraitLabel
+@onready var summary_panel: Panel = $HUD/SummaryPanel
+@onready var summary_credits_lbl: Label = $HUD/SummaryPanel/SummaryCredits
+@onready var summary_exploits_lbl: Label = $HUD/SummaryPanel/SummaryExploits
+@onready var summary_zerodays_lbl: Label = $HUD/SummaryPanel/SummaryZerodays
+@onready var ultimate_btn: Button = $HUD/UltimateButton
+@onready var ultimate_cd_bar: ProgressBar = $HUD/UltimateCooldownBar
 var shake_t: float = 0.0
 var shake_amp: float = 0.0
 var rig_t: float = 0.0
-var rig_node: Node2D
 var tick_timer: float = 0.0
 var scan_fx_timer: float = 0.0
 
@@ -30,7 +48,6 @@ var bot_timer: float = 0.0
 var tier: Dictionary
 
 var hunter_bots: Array = []
-var hunter_layer: Node2D
 const HUNTER_SPEED := 160.0
 const HUNTER_CRACK_SPEED := 0.6
 const HUNTER_RADIUS := 16.0
@@ -38,8 +55,6 @@ const HUNTER_RADIUS := 16.0
 var row_wipe_timer: float = 0.0
 
 var ultimate_cooldown: float = 0.0
-var ultimate_btn: Button
-var ultimate_cd_bar: ProgressBar
 
 var trace_progress: float = 1.0
 
@@ -54,21 +69,9 @@ var mouse_pos: Vector2 = Vector2.ZERO
 var cells: Array[ServerNode] = []
 var all_cell_positions: Array[Vector2] = []
 
-var credits_label: Label
-var exploits_label: Label
-var zerodays_label: Label
-var tier_label: Label
-var trace_bar: ProgressBar
-var trace_label: Label
-
 var _shown_credits: int = -1
 var _shown_exploits: int = -1
 var _shown_zerodays: int = -1
-
-var summary_panel: Panel
-var summary_credits_lbl: Label
-var summary_exploits_lbl: Label
-var summary_zerodays_lbl: Label
 
 func _ready() -> void:
 	if OS.is_debug_build():
@@ -86,18 +89,11 @@ func _ready() -> void:
 	round_start_zerodays = GameState.zerodays
 	Audio.play_ambient()
 	get_viewport().transparent_bg = false
-	cam = Camera2D.new()
-	cam.position = Vector2(640, 360)
-	add_child(cam)
 	cam.make_current()
-	_build_background()
+	_setup_background_layers()
 	_build_grid()
-	fx_layer = Node2D.new()
-	add_child(fx_layer)
-	hunter_layer = Node2D.new()
-	add_child(hunter_layer)
 	hunter_layer.draw.connect(_draw_hunters.bind(hunter_layer))
-	_build_hud()
+	_setup_hud()
 	if OS.is_debug_build() and OS.get_cmdline_user_args().has("autotest_endround"):
 		GameState.add_credits(342)
 		GameState.exploits += 3
@@ -123,32 +119,10 @@ func _ready() -> void:
 	set_process(true)
 	set_process_input(true)
 
-func _build_background() -> void:
-	var bg := ColorRect.new()
-	bg.color = COL_BACKDROP
-	bg.size = Vector2(1280, 720)
-	bg.position = Vector2.ZERO
-	bg.z_index = -10
-	add_child(bg)
-
-	var circuit := Node2D.new()
-	circuit.z_index = -9
-	add_child(circuit)
-	circuit.draw.connect(_draw_circuit_decor.bind(circuit))
-
-	rig_node = Node2D.new()
-	rig_node.z_index = -4
-	add_child(rig_node)
+func _setup_background_layers() -> void:
+	$World/CircuitDecor.draw.connect(_draw_circuit_decor.bind($World/CircuitDecor))
 	rig_node.draw.connect(_draw_rig_panel.bind(rig_node))
-
-	grid_bg = Node2D.new()
-	grid_bg.z_index = -5
-	add_child(grid_bg)
 	grid_bg.draw.connect(_draw_grid_lines.bind(grid_bg))
-
-	packets_layer = Node2D.new()
-	packets_layer.z_index = -3
-	add_child(packets_layer)
 	packets_layer.draw.connect(_draw_packets.bind(packets_layer))
 	_init_packet_lanes()
 
@@ -179,7 +153,6 @@ func _draw_circuit_decor(node: Node2D) -> void:
 		if prop_tex:
 			node.draw_texture_rect(prop_tex, Rect2(Vector2(x, y), Vector2(40, 40)), false, Color(1, 1, 1, 0.8))
 
-var packets_layer: Node2D
 var packet_lanes: Array = []
 
 func _init_packet_lanes() -> void:
@@ -242,8 +215,6 @@ func _draw_grid_lines(node: Node2D) -> void:
 		node.draw_line(Vector2(GRID_ORIGIN.x, y), Vector2(GRID_ORIGIN.x + GRID_COLS * CELL, y), COL_GRID_LINE, 1.0)
 
 func _build_grid() -> void:
-	nodes_layer = Node2D.new()
-	add_child(nodes_layer)
 	all_cell_positions.clear()
 	for r in range(GRID_ROWS):
 		for c in range(GRID_COLS):
@@ -277,7 +248,7 @@ func _pick_free_position(avoid: Array[Vector2], exclude: ServerNode = null) -> V
 	return all_cell_positions[randi() % all_cell_positions.size()]
 
 func _spawn_node_at_free_position(avoid: Array[Vector2]) -> ServerNode:
-	var n := ServerNode.new()
+	var n := SERVER_NODE_SCENE.instantiate() as ServerNode
 	n.position = _pick_free_position(avoid)
 	n.reset_locked(_spawn_vulnerable(), _spawn_honeypot())
 	n.honeypot_expired.connect(_on_honeypot_expired)
@@ -307,35 +278,18 @@ func _on_honeypot_expired(n: ServerNode) -> void:
 	Audio.play_denied()
 	_respawn_elsewhere(n)
 
-func _build_hud() -> void:
-	hud = CanvasLayer.new()
-	add_child(hud)
-
-	var top_panel := Panel.new()
-	top_panel.position = Vector2(16, 12)
-	top_panel.size = Vector2(300, 100)
+func _setup_hud() -> void:
+	var top_panel := $HUD/TopPanel
 	var hud_panel_tex := KHArt.tex("ui", "hud_counter")
 	if hud_panel_tex:
 		var psb := StyleBoxTexture.new()
 		psb.texture = hud_panel_tex
 		psb.set_texture_margin_all(8)
 		top_panel.add_theme_stylebox_override("panel", psb)
-	hud.add_child(top_panel)
 
-	credits_label = _make_counter("credits", "CREDITS: 0", COL_CYAN, Vector2(28, 20))
-	exploits_label = _make_counter("exploit", "EXPLOITS: 0", COL_MAGENTA, Vector2(28, 46))
-	zerodays_label = _make_counter("key", "0-DAYS: 0", COL_AMBER, Vector2(28, 72))
-
-	trace_label = _make_label("UPLINK STABILITY", COL_GREEN, Vector2(460, 16))
-	hud.add_child(trace_label)
-
-	trace_bar = ProgressBar.new()
-	trace_bar.position = Vector2(400, 40)
-	trace_bar.size = Vector2(480, 24)
 	trace_bar.min_value = 0
 	trace_bar.max_value = 1
 	trace_bar.value = 1
-	trace_bar.show_percentage = false
 	var sb_bg := StyleBoxFlat.new()
 	sb_bg.bg_color = COL_PANEL
 	sb_bg.border_color = COL_GRID_LINE
@@ -344,92 +298,38 @@ func _build_hud() -> void:
 	sb_fill.bg_color = COL_GREEN
 	trace_bar.add_theme_stylebox_override("background", sb_bg)
 	trace_bar.add_theme_stylebox_override("fill", sb_fill)
-	hud.add_child(trace_bar)
 
-	var btn_y := 640
-	var skill_btn := _make_upgrade_button("SKILL TREE", Vector2(972, btn_y))
-	skill_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/SkillTree.tscn"))
-	hud.add_child(skill_btn)
+	var nav_style := StyleBoxFlat.new()
+	nav_style.bg_color = COL_PANEL
+	nav_style.border_color = COL_CYAN
+	nav_style.set_border_width_all(2)
+	for btn in [$HUD/SkillTreeButton, $HUD/BackButton]:
+		btn.add_theme_stylebox_override("normal", nav_style)
+	$HUD/SkillTreeButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/SkillTree.tscn"))
+	$HUD/BackButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/NetworkSelect.tscn"))
 
-	var back_btn := _make_upgrade_button("← NETWORKS", Vector2(972, btn_y - 52))
-	back_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/NetworkSelect.tscn"))
-	hud.add_child(back_btn)
-
-	tier_label = _make_label(str(tier["name"]), tier["color"], Vector2(972, 12))
-	hud.add_child(tier_label)
-
+	tier_label.text = str(tier["name"])
+	tier_label.add_theme_color_override("font_color", tier["color"])
 	var trait_text: String = tier.get("trait_name", "")
-	if trait_text != "":
-		var trait_lbl := Label.new()
-		trait_lbl.text = trait_text
-		trait_lbl.position = Vector2(400, 70)
-		trait_lbl.size = Vector2(480, 40)
-		trait_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-		trait_lbl.add_theme_color_override("font_color", tier["color"])
-		trait_lbl.add_theme_font_size_override("font_size", 12)
-		hud.add_child(trait_lbl)
+	trait_label.text = trait_text
+	trait_label.visible = trait_text != ""
+	trait_label.add_theme_color_override("font_color", tier["color"])
 
-	var hint := _make_label("move your mouse over the grid to crack and collect nodes automatically", Color8(120,130,150), Vector2(16, 690))
-	hud.add_child(hint)
-	_refresh_hud()
-	_build_summary_panel()
-
-func _build_summary_panel() -> void:
-	summary_panel = Panel.new()
-	summary_panel.position = Vector2(964, 108)
-	summary_panel.size = Vector2(300, 470)
-	summary_panel.visible = false
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color8(10, 13, 19)
 	sb.border_color = COL_GREEN
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(6)
 	summary_panel.add_theme_stylebox_override("panel", sb)
-	hud.add_child(summary_panel)
-
-	var title := _make_label("RUN COMPLETE", COL_GREEN, Vector2(18, 16))
-	title.add_theme_font_size_override("font_size", 20)
-	summary_panel.add_child(title)
-	var sub := Label.new()
-	sub.text = "connection lost — here's\nwhat you pulled out this run"
-	sub.position = Vector2(18, 46)
-	sub.size = Vector2(264, 40)
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD
-	sub.add_theme_color_override("font_color", Color8(140,150,165))
-	sub.add_theme_font_size_override("font_size", 12)
-	summary_panel.add_child(sub)
-
-	summary_credits_lbl = _make_label("", COL_CYAN, Vector2(18, 100))
-	summary_credits_lbl.add_theme_font_size_override("font_size", 16)
-	summary_panel.add_child(summary_credits_lbl)
-	summary_exploits_lbl = _make_label("", COL_MAGENTA, Vector2(18, 126))
-	summary_exploits_lbl.add_theme_font_size_override("font_size", 16)
-	summary_panel.add_child(summary_exploits_lbl)
-	summary_zerodays_lbl = _make_label("", COL_AMBER, Vector2(18, 152))
-	summary_zerodays_lbl.add_theme_font_size_override("font_size", 16)
-	summary_panel.add_child(summary_zerodays_lbl)
-
-	var hint2 := Label.new()
-	hint2.text = "spend your credits below in the\nskill tree, then breach again"
-	hint2.position = Vector2(18, 190)
-	hint2.size = Vector2(264, 40)
-	hint2.autowrap_mode = TextServer.AUTOWRAP_WORD
-	hint2.add_theme_color_override("font_color", Color8(140,150,165))
-	hint2.add_theme_font_size_override("font_size", 12)
-	summary_panel.add_child(hint2)
-
-	var again_btn := Button.new()
-	again_btn.text = "BREACH AGAIN"
-	again_btn.position = Vector2(18, 390)
-	again_btn.size = Vector2(264, 44)
 	var asb := StyleBoxFlat.new()
 	asb.bg_color = COL_PANEL
 	asb.border_color = COL_CYAN
 	asb.set_border_width_all(2)
-	again_btn.add_theme_stylebox_override("normal", asb)
-	again_btn.add_theme_color_override("font_color", COL_CYAN)
-	again_btn.pressed.connect(func(): get_tree().reload_current_scene())
-	summary_panel.add_child(again_btn)
+	$HUD/SummaryPanel/BreachAgainButton.add_theme_stylebox_override("normal", asb)
+	$HUD/SummaryPanel/BreachAgainButton.pressed.connect(func(): get_tree().reload_current_scene())
+
+	_setup_ultimate_button()
+	_refresh_hud()
 
 func _end_round() -> void:
 	round_active = false
@@ -449,31 +349,6 @@ func _end_round() -> void:
 	summary_panel.visible = true
 	_refresh_hud()
 
-func _make_label(text: String, col: Color, pos: Vector2) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.position = pos
-	l.add_theme_color_override("font_color", col)
-	l.add_theme_font_size_override("font_size", 18)
-	return l
-
-func _make_counter(icon_name: String, text: String, col: Color, pos: Vector2) -> Label:
-	var icon_tex := KHArt.tex("icons", icon_name)
-	if icon_tex:
-		var icon := TextureRect.new()
-		icon.texture = icon_tex
-		icon.position = pos + Vector2(0, 2)
-		icon.custom_minimum_size = Vector2(18, 18)
-		icon.size = Vector2(18, 18)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_SCALE
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hud.add_child(icon)
-	var l := _make_label(text, col, pos + Vector2(34, 0))
-	hud.add_child(l)
-	return l
-
 func _pop_counter(l: Label) -> void:
 	if l == null:
 		return
@@ -481,19 +356,6 @@ func _pop_counter(l: Label) -> void:
 	var tw := create_tween()
 	tw.tween_property(l, "scale", Vector2(1.18, 1.18), 0.07)
 	tw.tween_property(l, "scale", Vector2.ONE, 0.07)
-
-func _make_upgrade_button(text: String, pos: Vector2) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.position = pos
-	b.size = Vector2(228, 44)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = COL_PANEL
-	sb.border_color = COL_CYAN
-	sb.set_border_width_all(2)
-	b.add_theme_stylebox_override("normal", sb)
-	b.add_theme_color_override("font_color", COL_CYAN)
-	return b
 
 func _input(event: InputEvent) -> void:
 	if not round_active:
@@ -738,9 +600,11 @@ func _update_row_wipe(delta: float) -> void:
 
 func _update_ultimate(delta: float) -> void:
 	if GameState.ultimate_wipe_level <= 0:
+		ultimate_btn.visible = false
+		ultimate_cd_bar.visible = false
 		return
-	if ultimate_btn == null:
-		_build_ultimate_button()
+	ultimate_btn.visible = true
+	ultimate_cd_bar.visible = true
 	if DevMode.infinite_ultimates:
 		ultimate_cooldown = 0.0
 	if ultimate_cooldown > 0.0:
@@ -754,12 +618,8 @@ func _update_ultimate(delta: float) -> void:
 func _ultimate_cooldown_max() -> float:
 	return max(10.0, 30.0 - GameState.ultimate_wipe_level * 5.0)
 
-func _build_ultimate_button() -> void:
+func _setup_ultimate_button() -> void:
 	var icon_tex := KHArt.tex("icons", "power")
-	ultimate_btn = Button.new()
-	ultimate_btn.text = "  ZERO-DAY ULTIMATE"
-	ultimate_btn.position = Vector2(988, 444)
-	ultimate_btn.size = Vector2(260, 48)
 	if icon_tex:
 		ultimate_btn.icon = icon_tex
 		ultimate_btn.expand_icon = true
@@ -767,26 +627,19 @@ func _build_ultimate_button() -> void:
 	usb.bg_color = Color8(20, 10, 24)
 	usb.border_color = Color8(216, 110, 255)
 	usb.set_border_width_all(2)
-	usb.set_corner_radius_all(0)
 	ultimate_btn.add_theme_stylebox_override("normal", usb)
 	ultimate_btn.add_theme_color_override("font_color", Color8(216, 110, 255))
-	ultimate_btn.pressed.connect(_on_ultimate_pressed)
-	hud.add_child(ultimate_btn)
-
-	ultimate_cd_bar = ProgressBar.new()
-	ultimate_cd_bar.position = Vector2(988, 496)
-	ultimate_cd_bar.size = Vector2(260, 8)
+	if not ultimate_btn.pressed.is_connected(_on_ultimate_pressed):
+		ultimate_btn.pressed.connect(_on_ultimate_pressed)
 	ultimate_cd_bar.min_value = 0
 	ultimate_cd_bar.max_value = 1
 	ultimate_cd_bar.value = 1
-	ultimate_cd_bar.show_percentage = false
 	var cdbg := StyleBoxFlat.new()
 	cdbg.bg_color = COL_PANEL
 	var cdfill := StyleBoxFlat.new()
 	cdfill.bg_color = Color8(216, 110, 255)
 	ultimate_cd_bar.add_theme_stylebox_override("background", cdbg)
 	ultimate_cd_bar.add_theme_stylebox_override("fill", cdfill)
-	hud.add_child(ultimate_cd_bar)
 
 func _on_ultimate_pressed() -> void:
 	if ultimate_cooldown > 0.0 or not round_active:

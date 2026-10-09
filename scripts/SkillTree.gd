@@ -1,4 +1,4 @@
-extends Node2D
+extends Control
 
 const COL_BACKDROP := Color8(6, 8, 13)
 const COL_PANEL := Color8(12, 15, 22)
@@ -14,6 +14,17 @@ const COL_X := [190, 450, 710, 970]
 const ROW_Y := [145, 295, 445, 595]
 const CARD_W := 132.0
 const CARD_H := 118.0
+
+@onready var matrix_overlay: Node2D = $MatrixOverlay
+@onready var scanlines: Node2D = $Scanlines
+@onready var link_layer: Node2D = $LinkLayer
+@onready var skill_nodes_layer: Control = $SkillNodesLayer
+@onready var credits_lbl: Label = $BottomBar/CreditsLabel
+@onready var progress_lbl: Label = $BottomBar/ProgressLabel
+@onready var preview_panel: Panel = $PreviewPanel
+@onready var preview_title: Label = $PreviewPanel/PreviewTitle
+@onready var preview_body: Label = $PreviewPanel/PreviewBody
+@onready var preview_cost: Label = $PreviewPanel/PreviewCost
 
 class SkillDef:
 	var id: String
@@ -32,14 +43,8 @@ class SkillDef:
 		reveal_threshold = p_reveal
 
 var skills: Array = []
-var credits_lbl: Label
-var progress_lbl: Label
 var node_buttons: Dictionary = {}
 var node_icons: Dictionary = {}
-var preview_panel: Panel
-var preview_title: Label
-var preview_body: Label
-var preview_cost: Label
 
 func _ready() -> void:
 	if OS.is_debug_build() and OS.get_cmdline_user_args().has("autotest_skills"):
@@ -48,26 +53,37 @@ func _ready() -> void:
 		GameState.skill_levels["speed1"] = 3
 		GameState.skill_levels["radius1"] = 5
 	Audio.play_ambient()
-	var bg := ColorRect.new()
-	bg.color = COL_BACKDROP
-	bg.size = Vector2(1280, 720)
-	add_child(bg)
-
-	var mesh := Node2D.new()
-	mesh.z_index = -2
-	add_child(mesh)
-	mesh.draw.connect(_draw_matrix_bg.bind(mesh))
-
-	var scan := Node2D.new()
-	scan.z_index = -2
-	add_child(scan)
-	scan.draw.connect(_draw_scanlines.bind(scan))
-
+	matrix_overlay.draw.connect(_draw_matrix_bg)
+	scanlines.draw.connect(_draw_scanlines)
+	_style_chrome()
+	$BottomBar/ResumeButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Main.tscn"))
+	$BottomBar/NetworksButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/NetworkSelect.tscn"))
 	_define_skills()
 	_draw_links()
 	_build_nodes()
-	_build_hud()
-	_build_preview_panel()
+	_refresh_hud()
+
+func _style_chrome() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color8(18, 22, 30)
+	sb.border_color = COL_CYAN
+	sb.set_border_width_all(2)
+	preview_panel.add_theme_stylebox_override("panel", sb)
+	var rsb := StyleBoxFlat.new()
+	rsb.bg_color = COL_BACKDROP
+	rsb.border_color = COL_GREEN
+	rsb.set_border_width_all(2)
+	$BottomBar/ResumeButton.add_theme_stylebox_override("normal", rsb)
+	var bsb := StyleBoxFlat.new()
+	bsb.bg_color = COL_BACKDROP
+	bsb.border_color = COL_DIM
+	bsb.set_border_width_all(2)
+	$BottomBar/NetworksButton.add_theme_stylebox_override("normal", bsb)
+	var botsb := StyleBoxFlat.new()
+	botsb.bg_color = COL_PANEL
+	botsb.border_width_top = 2
+	botsb.border_color = Color8(40, 50, 60)
+	$BottomBar.add_theme_stylebox_override("panel", botsb)
 
 func _pos(row: int, col: int) -> Vector2:
 	return Vector2(COL_X[col], ROW_Y[row])
@@ -127,29 +143,26 @@ func _define_skills() -> void:
 			"requires further research", 999999999),
 	]
 
-func _draw_matrix_bg(node: Node2D) -> void:
+func _draw_matrix_bg() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	for i in range(60):
 		var x: float = rng.randf_range(0, 1280)
 		var y: float = rng.randf_range(0, 720)
 		if rng.randf() < 0.1:
-			node.draw_rect(Rect2(x, y, 2, 2), Color8(30, 50, 42), true)
+			matrix_overlay.draw_rect(Rect2(x, y, 2, 2), Color8(30, 50, 42), true)
 
-func _draw_scanlines(node: Node2D) -> void:
+func _draw_scanlines() -> void:
 	var y := 0
 	while y < 720:
-		node.draw_rect(Rect2(0, y, 1280, 1), Color(1, 1, 1, 0.012), true)
+		scanlines.draw_rect(Rect2(0, y, 1280, 1), Color(1, 1, 1, 0.012), true)
 		y += 3
 
 func _draw_links() -> void:
-	var line_node := Node2D.new()
-	line_node.z_index = -1
-	add_child(line_node)
-	line_node.draw.connect(func():
+	link_layer.draw.connect(func():
 		for c in range(COLS):
-			line_node.draw_line(_pos(0, c), _pos(ROWS - 1, c), COL_LINE, 2.0)
-		line_node.draw_line(_pos(0, 0), _pos(0, COLS - 1), COL_LINE, 2.0)
+			link_layer.draw_line(_pos(0, c), _pos(ROWS - 1, c), COL_LINE, 2.0)
+		link_layer.draw_line(_pos(0, 0), _pos(0, COLS - 1), COL_LINE, 2.0)
 	)
 
 func _build_nodes() -> void:
@@ -162,12 +175,12 @@ func _build_nodes() -> void:
 		btn.pressed.connect(_on_node_pressed.bind(s, btn))
 		btn.mouse_entered.connect(_on_node_hover.bind(s, true))
 		btn.mouse_exited.connect(_on_node_hover.bind(s, false))
-		add_child(btn)
+		skill_nodes_layer.add_child(btn)
 		node_buttons[s.id] = btn
 
 		var header := Node2D.new()
 		header.position = p - Vector2(CARD_W / 2.0, CARD_H / 2.0)
-		add_child(header)
+		skill_nodes_layer.add_child(header)
 		header.draw.connect(_draw_card_header.bind(header, s))
 		node_icons[s.id + "_header"] = header
 
@@ -175,7 +188,7 @@ func _build_nodes() -> void:
 		icon_node.icon_key = s.icon
 		icon_node.max_level = s.max_level
 		icon_node.position = p - Vector2(0, 30)
-		add_child(icon_node)
+		skill_nodes_layer.add_child(icon_node)
 		node_icons[s.id] = icon_node
 
 		var name_lbl := Label.new()
@@ -184,7 +197,7 @@ func _build_nodes() -> void:
 		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 		name_lbl.add_theme_font_size_override("font_size", 12)
-		add_child(name_lbl)
+		skill_nodes_layer.add_child(name_lbl)
 		node_icons[s.id + "_name"] = name_lbl
 
 		var sub_lbl := Label.new()
@@ -192,7 +205,7 @@ func _build_nodes() -> void:
 		sub_lbl.size = Vector2(CARD_W - 8, 18)
 		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		sub_lbl.add_theme_font_size_override("font_size", 11)
-		add_child(sub_lbl)
+		skill_nodes_layer.add_child(sub_lbl)
 		node_icons[s.id + "_sub"] = sub_lbl
 
 		_refresh_node(s, btn)
@@ -248,61 +261,45 @@ func _on_node_pressed(s, btn: Button) -> void:
 		Audio.play_denied()
 
 func _refresh_node(s, btn: Button) -> void:
-	var icon_node: Node2D = node_icons[s.id]
 	var name_lbl: Label = node_icons[s.id + "_name"]
 	var sub_lbl: Label = node_icons[s.id + "_sub"]
+	var icon_node: _SkillIcon = node_icons[s.id]
 	var header: Node2D = node_icons[s.id + "_header"]
-	var revealed := _is_revealed(s)
-
-	if not revealed:
-		name_lbl.text = "??? CLASSIFIED"
-		name_lbl.add_theme_color_override("font_color", COL_LOCKED)
-		sub_lbl.text = "locked"
-		sub_lbl.add_theme_color_override("font_color", Color8(140, 70, 85))
-		btn.add_theme_stylebox_override("normal", _skill_stylebox("locked"))
-		icon_node.visible = false
-		icon_node.level = 0
-		header.queue_redraw()
-		return
-
-	icon_node.visible = true
 	var lvl: int = GameState.skill_levels.get(s.id, 0)
 	icon_node.level = lvl
-
-	if s.max_level == 0:
+	if not _is_revealed(s):
+		name_lbl.text = "???"
+		sub_lbl.text = "locked"
+		name_lbl.add_theme_color_override("font_color", COL_LOCKED)
+		sub_lbl.add_theme_color_override("font_color", Color8(140, 70, 85))
+		btn.add_theme_stylebox_override("normal", _skill_stylebox("locked"))
+		icon_node.col = COL_LOCKED
+	elif s.max_level == 0:
 		name_lbl.text = s.label
+		sub_lbl.text = "—"
 		name_lbl.add_theme_color_override("font_color", COL_DIM)
-		sub_lbl.text = "research pending"
 		sub_lbl.add_theme_color_override("font_color", COL_DIM)
 		btn.add_theme_stylebox_override("normal", _skill_stylebox("locked"))
-		icon_node.visible = false
-		header.queue_redraw()
-		return
-
-	name_lbl.text = s.label
-	if lvl >= s.max_level:
+		icon_node.col = COL_DIM
+	elif lvl >= s.max_level:
+		name_lbl.text = s.label
+		sub_lbl.text = "MAX %d/%d" % [lvl, s.max_level]
 		name_lbl.add_theme_color_override("font_color", COL_GREEN)
-		sub_lbl.text = "★ MAX LEVEL"
 		sub_lbl.add_theme_color_override("font_color", COL_GREEN)
 		btn.add_theme_stylebox_override("normal", _skill_stylebox("active"))
 		icon_node.col = COL_GREEN
 	else:
 		var cost: int = int(s.cost * pow(1.5, lvl))
-		if lvl > 0:
-			name_lbl.add_theme_color_override("font_color", COL_GREEN)
-			sub_lbl.text = "Lv%d/%d  ·  %d◈" % [lvl, s.max_level, cost]
-			sub_lbl.add_theme_color_override("font_color", COL_GREEN)
-			btn.add_theme_stylebox_override("normal", _skill_stylebox("active"))
-			icon_node.col = COL_GREEN
-		elif GameState.credits >= cost:
+		name_lbl.text = s.label
+		if GameState.credits >= cost:
+			sub_lbl.text = "%d◈  Lv %d→%d" % [cost, lvl, lvl + 1]
 			name_lbl.add_theme_color_override("font_color", COL_CYAN)
-			sub_lbl.text = "%d◈ credits" % cost
 			sub_lbl.add_theme_color_override("font_color", COL_CYAN)
 			btn.add_theme_stylebox_override("normal", _skill_stylebox("available"))
 			icon_node.col = COL_CYAN
 		else:
-			name_lbl.add_theme_color_override("font_color", Color8(150, 170, 185))
 			sub_lbl.text = "%d◈ credits" % cost
+			name_lbl.add_theme_color_override("font_color", Color8(150, 170, 185))
 			sub_lbl.add_theme_color_override("font_color", COL_DIM)
 			btn.add_theme_stylebox_override("normal", _skill_stylebox("available"))
 			icon_node.col = COL_DIM
@@ -325,70 +322,6 @@ func _skill_stylebox(state: String) -> StyleBox:
 			sb.border_color = COL_CYAN
 			sb.bg_color = Color8(10, 18, 26)
 	return sb
-
-func _build_hud() -> void:
-	var bottom := Panel.new()
-	bottom.position = Vector2(0, 660)
-	bottom.size = Vector2(1280, 60)
-	add_child(bottom)
-	credits_lbl = _label("◈ %d CREDITS" % GameState.credits, COL_CYAN, 18, Vector2(24, 16))
-	bottom.add_child(credits_lbl)
-	progress_lbl = _label("", Color8(140, 150, 165), 12, Vector2(220, 20))
-	bottom.add_child(progress_lbl)
-
-	var resume_btn := Button.new()
-	resume_btn.text = "◂ BACK TO GAME"
-	resume_btn.position = Vector2(784, 8)
-	resume_btn.size = Vector2(220, 36)
-	var rsb := StyleBoxFlat.new()
-	rsb.bg_color = COL_BACKDROP
-	rsb.border_color = COL_GREEN
-	rsb.set_border_width_all(2)
-	resume_btn.add_theme_stylebox_override("normal", rsb)
-	resume_btn.add_theme_color_override("font_color", COL_GREEN)
-	resume_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Main.tscn"))
-	bottom.add_child(resume_btn)
-
-	var back_btn := Button.new()
-	back_btn.text = "CHANGE NETWORK"
-	back_btn.position = Vector2(1020, 8)
-	back_btn.size = Vector2(240, 36)
-	var bsb := StyleBoxFlat.new()
-	bsb.bg_color = COL_BACKDROP
-	bsb.border_color = COL_DIM
-	bsb.set_border_width_all(2)
-	back_btn.add_theme_stylebox_override("normal", bsb)
-	back_btn.add_theme_color_override("font_color", COL_DIM)
-	back_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/NetworkSelect.tscn"))
-	bottom.add_child(back_btn)
-
-	var title := _label("SKILL TREE", COL_GREEN, 26, Vector2(24, 20))
-	add_child(title)
-
-func _build_preview_panel() -> void:
-	preview_panel = Panel.new()
-	preview_panel.position = Vector2(470, 20)
-	preview_panel.size = Vector2(340, 100)
-	preview_panel.visible = false
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color8(18, 22, 30)
-	sb.border_color = COL_CYAN
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(0)
-	preview_panel.add_theme_stylebox_override("panel", sb)
-	add_child(preview_panel)
-
-	preview_title = _label("", COL_CYAN, 15, Vector2(12, 8))
-	preview_panel.add_child(preview_title)
-	preview_body = Label.new()
-	preview_body.position = Vector2(12, 30)
-	preview_body.size = Vector2(316, 40)
-	preview_body.autowrap_mode = TextServer.AUTOWRAP_WORD
-	preview_body.add_theme_color_override("font_color", Color8(200, 210, 220))
-	preview_body.add_theme_font_size_override("font_size", 12)
-	preview_panel.add_child(preview_body)
-	preview_cost = _label("", Color8(255, 184, 48), 13, Vector2(12, 74))
-	preview_panel.add_child(preview_cost)
 
 func _show_preview(s) -> void:
 	if not _is_revealed(s):
@@ -430,14 +363,6 @@ func _refresh_hud() -> void:
 	for s in skills:
 		if node_buttons.has(s.id):
 			_refresh_node(s, node_buttons[s.id])
-
-func _label(text: String, col: Color, size: int, pos: Vector2) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.position = pos
-	l.add_theme_color_override("font_color", col)
-	l.add_theme_font_size_override("font_size", size)
-	return l
 
 class _SkillIcon extends Node2D:
 	var icon_key: String

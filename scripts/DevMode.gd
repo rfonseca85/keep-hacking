@@ -76,9 +76,9 @@ func _build_ui() -> void:
 	panel.add_child(scroll)
 
 	var vbox := VBoxContainer.new()
-	vbox.position = Vector2(10, 10)
-	vbox.custom_minimum_size = Vector2(324, 0)
-	vbox.add_theme_constant_override("separation", 6)
+	vbox.position = Vector2(20, 14)
+	vbox.custom_minimum_size = Vector2(310, 0)
+	vbox.add_theme_constant_override("separation", 4)
 	scroll.add_child(vbox)
 
 	_add_title(vbox, "⚙ DEV TOOLS")
@@ -168,14 +168,14 @@ func _build_ui() -> void:
 func _add_title(parent: Node, text: String) -> void:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 20)
+	l.add_theme_font_size_override("font_size", 13)
 	l.add_theme_color_override("font_color", Color8(255, 184, 48))
 	parent.add_child(l)
 
 func _add_hint(parent: Node, text: String) -> void:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", 8)
 	l.add_theme_color_override("font_color", Color8(120, 130, 145))
 	parent.add_child(l)
 
@@ -184,7 +184,7 @@ func _add_section(parent: Node, text: String) -> void:
 	parent.add_child(sep)
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_font_size_override("font_size", 10)
 	l.add_theme_color_override("font_color", Color8(0, 229, 255))
 	parent.add_child(l)
 
@@ -192,7 +192,7 @@ func _add_checkbox(parent: Node, key: String, label: String) -> void:
 	var cb := CheckBox.new()
 	cb.text = label
 	cb.button_pressed = get(key)
-	cb.add_theme_font_size_override("font_size", 12)
+	cb.add_theme_font_size_override("font_size", 9)
 	cb.add_theme_color_override("font_color", Color8(200, 210, 220))
 	cb.toggled.connect(func(pressed: bool): set(key, pressed))
 	parent.add_child(cb)
@@ -200,14 +200,13 @@ func _add_checkbox(parent: Node, key: String, label: String) -> void:
 func _add_action(parent: Node, label: String, callback: Callable, color: Color = Color8(0, 229, 255)) -> void:
 	var btn := Button.new()
 	btn.text = "▸ " + label
-	btn.custom_minimum_size = Vector2(324, 32)
-	btn.add_theme_font_size_override("font_size", 12)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color8(14, 16, 22)
-	sb.border_color = color
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(0)
+	btn.custom_minimum_size = Vector2(310, 22)
+	btn.add_theme_font_size_override("font_size", 9)
+	var sb := _field_stylebox(color)
 	btn.add_theme_stylebox_override("normal", sb)
+	btn.add_theme_stylebox_override("hover", sb)
+	btn.add_theme_stylebox_override("pressed", sb)
+	btn.add_theme_stylebox_override("focus", sb)
 	btn.add_theme_color_override("font_color", color)
 	btn.pressed.connect(func():
 		callback.call()
@@ -215,25 +214,53 @@ func _add_action(parent: Node, label: String, callback: Callable, color: Color =
 	)
 	parent.add_child(btn)
 
+func _field_stylebox(color: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color8(14, 16, 22)
+	sb.border_color = color
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(0)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	return sb
+
 func _add_number_field(parent: Node, label: String, getter: Callable, setter: Callable) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	parent.add_child(row)
+
 	var l := Label.new()
 	l.text = label
-	l.add_theme_font_size_override("font_size", 12)
+	l.custom_minimum_size = Vector2(118, 22)
+	l.add_theme_font_size_override("font_size", 9)
 	l.add_theme_color_override("font_color", Color8(170, 180, 192))
-	parent.add_child(l)
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	parent.add_child(row)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(l)
 
 	var field := LineEdit.new()
 	field.text = getter.call()
-	field.custom_minimum_size = Vector2(230, 30)
+	field.custom_minimum_size = Vector2(118, 22)
+	field.add_theme_font_size_override("font_size", 10)
+	field.add_theme_color_override("font_color", Color8(220, 240, 255))
+	var fsb := _field_stylebox(Color8(0, 229, 255))
+	field.add_theme_stylebox_override("normal", fsb)
+	field.add_theme_stylebox_override("focus", _field_stylebox(Color8(57, 255, 106)))
+	field.add_theme_stylebox_override("read_only", fsb)
 	row.add_child(field)
 
 	var btn := Button.new()
 	btn.text = "SET"
-	btn.custom_minimum_size = Vector2(80, 30)
+	btn.custom_minimum_size = Vector2(50, 22)
+	btn.add_theme_font_size_override("font_size", 9)
+	var bsb := _field_stylebox(Color8(0, 229, 255))
+	btn.add_theme_stylebox_override("normal", bsb)
+	btn.add_theme_stylebox_override("hover", bsb)
+	btn.add_theme_stylebox_override("pressed", bsb)
+	btn.add_theme_stylebox_override("focus", bsb)
+	btn.add_theme_color_override("font_color", Color8(0, 229, 255))
 	row.add_child(btn)
 
 	var apply := func():
