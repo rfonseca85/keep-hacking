@@ -188,27 +188,27 @@ color = Color(0, 0, 0, 0.6)
 [node name="SummaryPanel" type="Panel" parent="." unique_id=1841249622]
 unique_name_in_owner = true
 visible = false
-offset_left = 490.0
-offset_top = 125.0
-offset_right = 790.0
-offset_bottom = 595.0
+offset_left = 440.0
+offset_top = 120.0
+offset_right = 840.0
+offset_bottom = 520.0
 
 [node name="SummaryTitle" type="Label" parent="SummaryPanel" unique_id=1027233587]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 18.0
-offset_top = 16.0
-offset_right = 280.0
-offset_bottom = 44.0
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 376.0
+offset_bottom = 48.0
 theme_override_colors/font_color = Color(0.223529, 1, 0.415686, 1)
 theme_override_font_sizes/font_size = 20
 text = "RUN COMPLETE"
 
 [node name="SummarySub" type="Label" parent="SummaryPanel" unique_id=46608053]
 layout_mode = 0
-offset_left = 18.0
-offset_top = 46.0
-offset_right = 282.0
+offset_left = 24.0
+offset_top = 50.0
+offset_right = 376.0
 offset_bottom = 86.0
 theme_override_colors/font_color = Color(0.54902, 0.588235, 0.647059, 1)
 theme_override_font_sizes/font_size = 12
@@ -219,9 +219,9 @@ autowrap_mode = 3
 [node name="SummaryCredits" type="Label" parent="SummaryPanel" unique_id=1662453050]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 18.0
-offset_top = 100.0
-offset_right = 282.0
+offset_left = 24.0
+offset_top = 104.0
+offset_right = 376.0
 offset_bottom = 124.0
 theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
 theme_override_font_sizes/font_size = 16
@@ -229,9 +229,9 @@ theme_override_font_sizes/font_size = 16
 [node name="SummaryExploits" type="Label" parent="SummaryPanel" unique_id=39397471]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 18.0
-offset_top = 126.0
-offset_right = 282.0
+offset_left = 24.0
+offset_top = 130.0
+offset_right = 376.0
 offset_bottom = 150.0
 theme_override_colors/font_color = Color(1, 0.180392, 0.572549, 1)
 theme_override_font_sizes/font_size = 16
@@ -239,41 +239,45 @@ theme_override_font_sizes/font_size = 16
 [node name="SummaryZerodays" type="Label" parent="SummaryPanel" unique_id=614320215]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 18.0
-offset_top = 152.0
-offset_right = 282.0
+offset_left = 24.0
+offset_top = 156.0
+offset_right = 376.0
 offset_bottom = 176.0
 theme_override_colors/font_color = Color(1, 0.721569, 0.188235, 1)
 theme_override_font_sizes/font_size = 16
 
 [node name="SummaryHint" type="Label" parent="SummaryPanel" unique_id=61948871]
 layout_mode = 0
-offset_left = 18.0
-offset_top = 190.0
-offset_right = 282.0
-offset_bottom = 230.0
+offset_left = 24.0
+offset_top = 196.0
+offset_right = 376.0
+offset_bottom = 236.0
 theme_override_colors/font_color = Color(0.54902, 0.588235, 0.647059, 1)
 theme_override_font_sizes/font_size = 12
 text = "spend your credits in the skill tree,
 or breach the same network again"
 autowrap_mode = 3
 
-[node name="BreachAgainButton" type="Button" parent="SummaryPanel" unique_id=1470895981]
-unique_name_in_owner = true
+[node name="SummaryButtonRow" type="HBoxContainer" parent="SummaryPanel" unique_id=1470895980]
 layout_mode = 0
-offset_left = 18.0
-offset_top = 390.0
-offset_right = 142.0
-offset_bottom = 434.0
+offset_left = 24.0
+offset_top = 320.0
+offset_right = 376.0
+offset_bottom = 376.0
+theme_override_constants/separation = 28
+alignment = 1
+
+[node name="BreachAgainButton" type="Button" parent="SummaryPanel/SummaryButtonRow" unique_id=1470895981]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(158, 48)
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
 text = "BREACH AGAIN"
 
-[node name="SummarySkillTreeButton" type="Button" parent="SummaryPanel" unique_id=1470895982]
-layout_mode = 0
-offset_left = 150.0
-offset_top = 390.0
-offset_right = 282.0
-offset_bottom = 434.0
+[node name="SummarySkillTreeButton" type="Button" parent="SummaryPanel/SummaryButtonRow" unique_id=1470895982]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(158, 48)
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.223529, 1, 0.415686, 1)
 text = "SKILL TREE"
 

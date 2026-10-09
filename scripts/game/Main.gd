@@ -7,6 +7,9 @@ const GRID_ROWS := 7
 const CELL := 64
 const GRID_ORIGIN := Vector2(160, 140)
 const MIN_NODE_DIST_CELLS := 2
+const LINK_MIN_DIST := 75.0
+const LINK_MAX_DIST := 250.0
+const CHAIN_HACK_RATE := 0.25
 
 const COL_BACKDROP := Color8(6, 8, 13)
 const COL_GRID_LINE := Color8(16, 22, 32)
@@ -69,6 +72,7 @@ var mouse_pos: Vector2 = Vector2.ZERO
 
 var cells: Array[ServerNode] = []
 var all_cell_positions: Array[Vector2] = []
+var _node_neighbors: Dictionary = {}
 
 var _shown_credits: int = -1
 var _shown_exploits: int = -1
@@ -227,6 +231,45 @@ func _build_grid() -> void:
 			all_cell_positions.append(GRID_ORIGIN + Vector2((c + 0.5) * CELL, (r + 0.5) * CELL))
 	for i in range(GameState.max_nodes):
 		_spawn_node_at_free_position([])
+	_rebuild_node_links()
+
+func _rebuild_node_links() -> void:
+	_node_neighbors.clear()
+	var nodes: Array[ServerNode] = []
+	for n in cells:
+		if is_instance_valid(n):
+			nodes.append(n)
+			_node_neighbors[n.get_instance_id()] = []
+	for i in range(nodes.size()):
+		var a: ServerNode = nodes[i]
+		var nearest: ServerNode = null
+		var best := LINK_MAX_DIST
+		for j in range(nodes.size()):
+			if i == j:
+				continue
+			var b: ServerNode = nodes[j]
+			var dist := a.position.distance_to(b.position)
+			if dist >= LINK_MIN_DIST and dist < best:
+				nearest = b
+				best = dist
+		if nearest != null:
+			_add_node_link(a, nearest)
+
+func _add_node_link(a: ServerNode, b: ServerNode) -> void:
+	var id_a := a.get_instance_id()
+	var id_b := b.get_instance_id()
+	var list_a: Array = _node_neighbors[id_a]
+	var list_b: Array = _node_neighbors[id_b]
+	if b not in list_a:
+		list_a.append(b)
+	if a not in list_b:
+		list_b.append(a)
+
+func _linked_neighbors(n: ServerNode) -> Array:
+	var id := n.get_instance_id()
+	if not _node_neighbors.has(id):
+		return []
+	return _node_neighbors[id]
 
 func _active_positions(exclude: ServerNode) -> Array[Vector2]:
 	var result: Array[Vector2] = []
@@ -267,6 +310,7 @@ func _respawn_elsewhere(n: ServerNode) -> void:
 	cells.erase(n)
 	n.queue_free()
 	_spawn_node_at_free_position([old_pos])
+	_rebuild_node_links()
 
 func _spawn_vulnerable() -> bool:
 	return randf() < 0.12
@@ -331,15 +375,15 @@ func _setup_hud() -> void:
 	asb.bg_color = COL_PANEL
 	asb.border_color = COL_CYAN
 	asb.set_border_width_all(2)
-	$HUD/SummaryPanel/BreachAgainButton.add_theme_stylebox_override("normal", asb)
-	$HUD/SummaryPanel/BreachAgainButton.pressed.connect(func(): get_tree().reload_current_scene())
+	$HUD/SummaryPanel/SummaryButtonRow/BreachAgainButton.add_theme_stylebox_override("normal", asb)
+	$HUD/SummaryPanel/SummaryButtonRow/BreachAgainButton.pressed.connect(func(): get_tree().reload_current_scene())
 
 	var ssb := StyleBoxFlat.new()
 	ssb.bg_color = COL_PANEL
 	ssb.border_color = COL_GREEN
 	ssb.set_border_width_all(2)
-	$HUD/SummaryPanel/SummarySkillTreeButton.add_theme_stylebox_override("normal", ssb)
-	$HUD/SummaryPanel/SummarySkillTreeButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/SkillTree.tscn"))
+	$HUD/SummaryPanel/SummaryButtonRow/SummarySkillTreeButton.add_theme_stylebox_override("normal", ssb)
+	$HUD/SummaryPanel/SummaryButtonRow/SummarySkillTreeButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/SkillTree.tscn"))
 
 	_setup_ultimate_button()
 	_refresh_hud()
@@ -462,7 +506,13 @@ func _process(delta: float) -> void:
 				if n.position.distance_to(mouse_pos) > radius:
 					continue
 				if n.state == ServerNode.State.LOCKED:
-					n.add_progress(speed * delta)
+					var amount := speed * delta
+					n.add_progress(amount)
+					for peer in _linked_neighbors(n):
+						if not is_instance_valid(peer):
+							continue
+						if peer.state == ServerNode.State.LOCKED:
+							peer.add_progress(amount * CHAIN_HACK_RATE)
 					any_in_range = true
 				elif n.state == ServerNode.State.READY:
 					_exfiltrate(n)

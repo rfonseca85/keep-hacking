@@ -146,11 +146,14 @@ func _draw() -> void:
         var q: Vector2 = nearest.position
         var a_red: bool = bool(a.is_honeypot) and int(a.state) == 1
         var color: Color = RED if a_red else CYAN
-        draw_line(p, q, Color(color.r, color.g, color.b, 0.24), 1.0)
+        var cable_core := Color(color.r, color.g, color.b, 0.42)
+        var cable_sheath := Color(color.r * 0.35, color.g * 0.35, color.b * 0.35, 0.55)
+        draw_line(p, q, cable_sheath, 6.0)
+        draw_line(p, q, cable_core, 3.5)
         var phase: float = fposmod(_time * 0.35 + float(i) * 0.27, 1.0)
         var point: Vector2 = p.lerp(q, phase)
-        draw_circle(point, 4.5, Color(color.r,color.g,color.b,0.10))
-        draw_circle(point, 1.6, Color(color.r,color.g,color.b,0.95))
+        draw_circle(point, 5.0, Color(color.r, color.g, color.b, 0.12))
+        draw_circle(point, 2.2, Color(color.r, color.g, color.b, 0.95))
 
     # Short celebration rings only after real LOCKED -> READY transitions.
     for burst in _bursts:
