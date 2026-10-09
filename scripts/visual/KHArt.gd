@@ -27,6 +27,9 @@ static func fx_frames(prefix: String, count: int, fps: float = 16.0) -> SpriteFr
 	frames.set_animation_speed(&"run", fps)
 	frames.set_animation_loop(&"run", false)
 	for i in range(count):
+		var path := "%sfx/%s_%02d.png" % [ROOT, prefix, i]
+		if not ResourceLoader.exists(path):
+			break
 		var img := tex("fx", "%s_%02d" % [prefix, i])
 		if img != null:
 			frames.add_frame(&"run", img)

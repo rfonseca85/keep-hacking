@@ -239,8 +239,8 @@ func _draw_grid_lines(node: Node2D) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
 	if grid_a and grid_b:
-		var tiles_x := (GRID_COLS * CELL) / 32
-		var tiles_y := (GRID_ROWS * CELL) / 32
+		var tiles_x: int = int(GRID_COLS * CELL / 32)
+		var tiles_y: int = int(GRID_ROWS * CELL / 32)
 		for ty in range(tiles_y):
 			for tx in range(tiles_x):
 				var tex := grid_a if rng.randf() > 0.12 else grid_b
@@ -664,20 +664,25 @@ func _update_hunter_bots(delta: float) -> void:
 	var taken: Array[ServerNode] = []
 	for h in hunter_bots:
 		var target = h["target"]
-		if not (target is ServerNode) or not is_instance_valid(target) or target.state != ServerNode.State.LOCKED:
+		if not _is_live_locked_server(target):
 			h["target"] = null
 		if h["target"] == null:
 			h["target"] = _find_nearest_locked(h["pos"], taken)
-		if h["target"] != null:
-			taken.append(h["target"])
-			var t: ServerNode = h["target"]
-			var to_target: Vector2 = t.position - h["pos"]
-			var dist: float = to_target.length()
-			if dist > HUNTER_RADIUS:
-				h["pos"] += to_target.normalized() * HUNTER_SPEED * delta
-			else:
-				t.add_progress(HUNTER_CRACK_SPEED * delta)
+		var t: ServerNode = h["target"]
+		if not _is_live_locked_server(t):
+			continue
+		taken.append(t)
+		var to_target: Vector2 = t.position - h["pos"]
+		var dist: float = to_target.length()
+		if dist > HUNTER_RADIUS:
+			h["pos"] += to_target.normalized() * HUNTER_SPEED * delta
+		else:
+			t.add_progress(HUNTER_CRACK_SPEED * delta)
 	hunter_layer.queue_redraw()
+
+func _is_live_locked_server(node: Variant) -> bool:
+	return is_instance_valid(node) and node is ServerNode and node.state == ServerNode.State.LOCKED
+
 
 func _find_nearest_locked(from: Vector2, exclude: Array[ServerNode]) -> ServerNode:
 	var best: ServerNode = null
@@ -685,7 +690,7 @@ func _find_nearest_locked(from: Vector2, exclude: Array[ServerNode]) -> ServerNo
 	for n in cells:
 		if not is_instance_valid(n) or n.state != ServerNode.State.LOCKED:
 			continue
-		if n in exclude:
+		if _is_in_exclude_list(n, exclude):
 			continue
 		var d := n.position.distance_to(from)
 		if d < best_dist:
@@ -693,11 +698,18 @@ func _find_nearest_locked(from: Vector2, exclude: Array[ServerNode]) -> ServerNo
 			best = n
 	return best
 
+func _is_in_exclude_list(n: ServerNode, exclude: Array[ServerNode]) -> bool:
+	for item in exclude:
+		if is_instance_valid(item) and item == n:
+			return true
+	return false
+
+
 func _draw_hunters(node: Node2D) -> void:
 	for h in hunter_bots:
 		var p: Vector2 = h["pos"]
 		var target = h.get("target")
-		if target is ServerNode and is_instance_valid(target):
+		if is_instance_valid(target) and target is ServerNode:
 			var tp: Vector2 = target.position
 			node.draw_line(p, tp, Color(1.0, 0.25, 0.35, 0.35), 2.0)
 			if p.distance_to(tp) <= HUNTER_RADIUS + 4.0:
@@ -747,7 +759,7 @@ func _execute_row_wipe(targets: Array) -> void:
 	_play_skill_flash(Color8(255, 40, 55), 0.45)
 	for n in targets:
 		if is_instance_valid(n):
-			VisualFX.play(fx_layer, n.position, "glitch", 10, 22.0, Color8(255, 50, 70), 0.85)
+			VisualFX.play(fx_layer, n.position, "glitch", 8, 22.0, Color8(255, 50, 70), 0.85)
 			_exfiltrate(n)
 	skill_fx_layer.queue_redraw()
 
@@ -826,7 +838,7 @@ func _try_spawn_zero_day() -> void:
 	nodes_layer.add_child(zero_day_node)
 	Audio.play_upgrade()
 	_spawn_floating_text(zero_day_node.position, "0-DAY ONLINE", Color8(216, 110, 255))
-	VisualFX.play(fx_layer, zero_day_node.position, "glitch", 10, 20.0, Color8(216, 110, 255), 1.0)
+	VisualFX.play(fx_layer, zero_day_node.position, "glitch", 8, 20.0, Color8(216, 110, 255), 1.0)
 
 
 func _on_zero_day_activation(_node: ZeroDayNode) -> void:
