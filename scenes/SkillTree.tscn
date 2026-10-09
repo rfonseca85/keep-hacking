@@ -258,7 +258,7 @@ display_name = "ZERO-DAY ULTIMATE"
 icon_key = "power"
 base_cost = 350
 max_level = 3
-description = "unlocks a clickable ability in the HUD: instantly exfiltrate every node on the board — shorter cooldown per level"
+description = "spawns a 0-DAY core on the grid center — hack it to chain all machines for 5s; shorter recharge per level"
 reveal_threshold = 300
 
 [node name="mesh_link" parent="SkillNodesLayer" unique_id=544671606 instance=ExtResource("3_skill")]

@@ -13,6 +13,9 @@ const CHAIN_HACK_RATE := 0.25
 const BASE_LINK_CHANCE := 0.22
 const LINK_CHANCE_PER_MESH_LEVEL := 0.14
 const ROW_WIPE_WARN_SEC := 0.9
+const ZERO_DAY_BURST_SEC := 5.0
+const ZERO_DAY_HACK_MULT := 2.75
+const ZERO_DAY_SCENE := preload("res://scenes/ZeroDayNode.tscn")
 
 const COL_BACKDROP := Color8(6, 8, 13)
 const COL_GRID_LINE := Color8(16, 22, 32)
@@ -78,7 +81,10 @@ var cells: Array[ServerNode] = []
 var all_cell_positions: Array[Vector2] = []
 var _node_neighbors: Dictionary = {}
 var network_links: Array = []
+var _mesh_links: Array = []
 var _row_wipe_pending: Dictionary = {}
+var zero_day_node: ZeroDayNode = null
+var _zeroday_burst_remaining: float = 0.0
 
 var _shown_credits: int = -1
 var _shown_exploits: int = -1
@@ -103,6 +109,7 @@ func _ready() -> void:
 	cam.make_current()
 	_setup_background_layers()
 	_build_grid()
+	_sync_zero_day_node()
 	hunter_layer.draw.connect(_draw_hunters.bind(hunter_layer))
 	skill_fx_layer.draw.connect(_draw_skill_fx.bind(skill_fx_layer))
 	_setup_hud()
@@ -272,6 +279,7 @@ func _rebuild_node_links() -> void:
 		if nearest != null:
 			_add_node_link(a, nearest)
 			network_links.append({"a": a, "b": nearest})
+	_mesh_links = network_links.duplicate()
 
 
 func _grid_row_rect(row: int) -> Rect2:
@@ -314,6 +322,9 @@ func _pick_free_position(avoid: Array[Vector2], exclude: ServerNode = null) -> V
 		candidates.shuffle()
 		for pos in candidates:
 			var ok := true
+			if zero_day_node != null and is_instance_valid(zero_day_node):
+				if pos.distance_to(zero_day_node.position) < CELL * 0.85:
+					ok = false
 			for o in occupied:
 				if pos.distance_to(o) < min_dist:
 					ok = false
@@ -338,6 +349,8 @@ func _respawn_elsewhere(n: ServerNode) -> void:
 	n.queue_free()
 	_spawn_node_at_free_position([old_pos])
 	_rebuild_node_links()
+	if _zeroday_burst_remaining > 0.0:
+		_apply_burst_links()
 
 func _spawn_vulnerable() -> bool:
 	return randf() < 0.12
@@ -412,7 +425,7 @@ func _setup_hud() -> void:
 	$HUD/SummaryPanel/SummaryButtonRow/SummarySkillTreeButton.add_theme_stylebox_override("normal", ssb)
 	$HUD/SummaryPanel/SummaryButtonRow/SummarySkillTreeButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/SkillTree.tscn"))
 
-	_setup_ultimate_button()
+	_hide_legacy_ultimate_hud()
 	_refresh_hud()
 
 func _end_round() -> void:
@@ -527,6 +540,11 @@ func _process(delta: float) -> void:
 
 		if is_decrypting:
 			var any_in_range := false
+			if zero_day_node != null and is_instance_valid(zero_day_node):
+				if mouse_pos.distance_to(zero_day_node.position) <= radius:
+					if zero_day_node.add_progress(speed * delta):
+						pass
+					any_in_range = true
 			for n in cells.duplicate():
 				if not is_instance_valid(n):
 					continue
@@ -568,7 +586,8 @@ func _process(delta: float) -> void:
 
 		_update_hunter_bots(delta)
 		_update_row_wipe(delta)
-		_update_ultimate(delta)
+		_update_zero_day_burst(delta)
+		_update_zero_day_cooldown(delta)
 
 		if not DevMode.infinite_time:
 			trace_progress -= delta / GameState.round_duration
@@ -707,7 +726,6 @@ func _update_row_wipe(delta: float) -> void:
 
 
 func _execute_row_wipe(targets: Array) -> void:
-	_trigger_shake(8.0, 0.35)
 	Audio.play_breach()
 	_play_skill_flash(Color8(255, 40, 55), 0.45)
 	for n in targets:
@@ -744,63 +762,109 @@ func _play_skill_flash(color: Color, duration: float = 0.4) -> void:
 	tw.tween_property(flash, "color:a", 0.0, duration * 0.78)
 	tw.tween_callback(flash.queue_free)
 
-func _update_ultimate(delta: float) -> void:
+func _zero_day_grid_center() -> Vector2:
+	return GRID_ORIGIN + Vector2(float(GRID_COLS) * CELL * 0.5, float(GRID_ROWS) * CELL * 0.5)
+
+
+func _sync_zero_day_node() -> void:
 	if GameState.ultimate_wipe_level <= 0:
-		ultimate_btn.visible = false
-		ultimate_cd_bar.visible = false
+		if zero_day_node != null and is_instance_valid(zero_day_node):
+			zero_day_node.queue_free()
+		zero_day_node = null
+		if _zeroday_burst_remaining > 0.0:
+			_zeroday_burst_remaining = 0.0
+			_rebuild_node_links()
 		return
-	ultimate_btn.visible = true
-	ultimate_cd_bar.visible = true
+	if zero_day_node != null and is_instance_valid(zero_day_node):
+		return
+	zero_day_node = ZERO_DAY_SCENE.instantiate() as ZeroDayNode
+	zero_day_node.position = _zero_day_grid_center()
+	zero_day_node.reset_locked(false, false)
+	zero_day_node.activation_requested.connect(_on_zero_day_activation)
+	nodes_layer.add_child(zero_day_node)
+
+
+func _on_zero_day_activation(_node: ZeroDayNode) -> void:
+	if not round_active:
+		return
+	if ultimate_cooldown > 0.0 and not DevMode.infinite_ultimates:
+		zero_day_node.reset_locked(false, false)
+		zero_day_node.set_cooldown(true)
+		return
+	_start_zero_day_burst()
+
+
+func _start_zero_day_burst() -> void:
+	_zeroday_burst_remaining = ZERO_DAY_BURST_SEC
+	if zero_day_node != null:
+		zero_day_node.begin_burst()
+	_apply_burst_links()
+	_play_skill_flash(Color8(200, 80, 255), 0.5)
+	Audio.play_breach()
+	_spawn_floating_text(zero_day_node.position, "0-DAY CHAIN", Color8(216, 110, 255))
+	VisualFX.play(fx_layer, zero_day_node.position, "scan_pulse", 12, 24.0, Color8(216, 110, 255), 1.2)
+
+
+func _apply_burst_links() -> void:
+	network_links = _mesh_links.duplicate()
+	if _zeroday_burst_remaining <= 0.0 or zero_day_node == null or not is_instance_valid(zero_day_node):
+		return
+	for n in cells:
+		if is_instance_valid(n):
+			network_links.append({"a": zero_day_node, "b": n})
+
+
+func _update_zero_day_burst(delta: float) -> void:
+	if _zeroday_burst_remaining <= 0.0:
+		return
+	_zeroday_burst_remaining -= delta
+	var speed := GameState.decrypt_speed * GameState.weaken_mult
+	var amount := speed * ZERO_DAY_HACK_MULT * delta
+	for n in cells.duplicate():
+		if not is_instance_valid(n):
+			continue
+		if n.state == ServerNode.State.LOCKED:
+			n.add_progress(amount)
+		elif n.state == ServerNode.State.READY:
+			_exfiltrate(n)
+	_apply_burst_links()
+	if zero_day_node != null and is_instance_valid(zero_day_node):
+		zero_day_node.queue_redraw()
+	if _zeroday_burst_remaining <= 0.0:
+		_finish_zero_day_burst()
+
+
+func _finish_zero_day_burst() -> void:
+	_zeroday_burst_remaining = 0.0
+	if zero_day_node != null and is_instance_valid(zero_day_node):
+		zero_day_node.end_burst()
+		zero_day_node.set_cooldown(true)
+	if not DevMode.infinite_ultimates:
+		ultimate_cooldown = _ultimate_cooldown_max()
+	_rebuild_node_links()
+
+
+func _update_zero_day_cooldown(delta: float) -> void:
+	if GameState.ultimate_wipe_level <= 0:
+		return
 	if DevMode.infinite_ultimates:
 		ultimate_cooldown = 0.0
+		if zero_day_node != null and is_instance_valid(zero_day_node):
+			zero_day_node.set_cooldown(false)
+		return
 	if ultimate_cooldown > 0.0:
 		ultimate_cooldown -= delta
-		ultimate_cd_bar.value = 1.0 - max(0.0, ultimate_cooldown) / _ultimate_cooldown_max()
-		ultimate_btn.disabled = true
-	else:
-		ultimate_cd_bar.value = 1.0
-		ultimate_btn.disabled = false
+		if ultimate_cooldown <= 0.0 and zero_day_node != null and is_instance_valid(zero_day_node):
+			zero_day_node.set_cooldown(false)
+
 
 func _ultimate_cooldown_max() -> float:
 	return max(10.0, 30.0 - GameState.ultimate_wipe_level * 5.0)
 
-func _setup_ultimate_button() -> void:
-	var icon_tex := KHArt.tex("icons", "power")
-	if icon_tex:
-		ultimate_btn.icon = icon_tex
-		ultimate_btn.expand_icon = true
-	var usb := StyleBoxFlat.new()
-	usb.bg_color = Color8(20, 10, 24)
-	usb.border_color = Color8(216, 110, 255)
-	usb.set_border_width_all(2)
-	ultimate_btn.add_theme_stylebox_override("normal", usb)
-	ultimate_btn.add_theme_color_override("font_color", Color8(216, 110, 255))
-	if not ultimate_btn.pressed.is_connected(_on_ultimate_pressed):
-		ultimate_btn.pressed.connect(_on_ultimate_pressed)
-	ultimate_cd_bar.min_value = 0
-	ultimate_cd_bar.max_value = 1
-	ultimate_cd_bar.value = 1
-	var cdbg := StyleBoxFlat.new()
-	cdbg.bg_color = COL_PANEL
-	var cdfill := StyleBoxFlat.new()
-	cdfill.bg_color = Color8(216, 110, 255)
-	ultimate_cd_bar.add_theme_stylebox_override("background", cdbg)
-	ultimate_cd_bar.add_theme_stylebox_override("fill", cdfill)
 
-func _on_ultimate_pressed() -> void:
-	if ultimate_cooldown > 0.0 or not round_active:
-		return
-	ultimate_cooldown = _ultimate_cooldown_max()
-	_trigger_shake(10.0, 0.5)
-	_play_skill_flash(Color8(200, 80, 255), 0.55)
-	Audio.play_breach()
-	for n in cells.duplicate():
-		if not is_instance_valid(n):
-			continue
-		VisualFX.play(fx_layer, n.position, "data_extract", 8, 20.0, COL_GREEN)
-		if n.state == ServerNode.State.LOCKED:
-			n.add_progress(1.0)
-		_exfiltrate(n)
+func _hide_legacy_ultimate_hud() -> void:
+	ultimate_btn.visible = false
+	ultimate_cd_bar.visible = false
 
 func _refresh_hud() -> void:
 	if GameState.credits != _shown_credits:

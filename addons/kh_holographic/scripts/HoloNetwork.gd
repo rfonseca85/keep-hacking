@@ -138,8 +138,9 @@ func _draw() -> void:
             continue
         var p: Vector2 = a.position
         var q: Vector2 = b.position
+        var is_zeroday_link: bool = a is ZeroDayNode or b is ZeroDayNode
         var a_red: bool = bool(a.is_honeypot) and int(a.state) == 1
-        var color: Color = RED if a_red else CYAN
+        var color: Color = Color(0.82, 0.35, 1.0) if is_zeroday_link else (RED if a_red else CYAN)
         var cable_core := Color(color.r, color.g, color.b, 0.42)
         var cable_sheath := Color(color.r * 0.35, color.g * 0.35, color.b * 0.35, 0.55)
         draw_line(p, q, cable_sheath, 6.0)
