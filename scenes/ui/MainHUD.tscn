@@ -144,13 +144,21 @@ theme_override_colors/font_color = Color(0.470588, 0.509804, 0.588235, 1)
 theme_override_font_sizes/font_size = 18
 text = "move your mouse over the grid to crack and collect nodes automatically"
 
+[node name="SummaryDim" type="ColorRect" parent="." unique_id=1841249621]
+unique_name_in_owner = true
+visible = false
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 1
+color = Color(0, 0, 0, 0.6)
+
 [node name="SummaryPanel" type="Panel" parent="." unique_id=1841249622]
 unique_name_in_owner = true
 visible = false
-offset_left = 964.0
-offset_top = 108.0
-offset_right = 1264.0
-offset_bottom = 578.0
+offset_left = 490.0
+offset_top = 125.0
+offset_right = 790.0
+offset_bottom = 595.0
 
 [node name="SummaryTitle" type="Label" parent="SummaryPanel" unique_id=1027233587]
 unique_name_in_owner = true
@@ -213,8 +221,8 @@ offset_right = 282.0
 offset_bottom = 230.0
 theme_override_colors/font_color = Color(0.54902, 0.588235, 0.647059, 1)
 theme_override_font_sizes/font_size = 12
-text = "spend your credits below in the
-skill tree, then breach again"
+text = "spend your credits in the skill tree,
+or breach the same network again"
 autowrap_mode = 3
 
 [node name="BreachAgainButton" type="Button" parent="SummaryPanel" unique_id=1470895981]
@@ -222,10 +230,19 @@ unique_name_in_owner = true
 layout_mode = 0
 offset_left = 18.0
 offset_top = 390.0
-offset_right = 282.0
+offset_right = 142.0
 offset_bottom = 434.0
 theme_override_colors/font_color = Color(0, 0.898039, 1, 1)
 text = "BREACH AGAIN"
+
+[node name="SummarySkillTreeButton" type="Button" parent="SummaryPanel" unique_id=1470895982]
+layout_mode = 0
+offset_left = 150.0
+offset_top = 390.0
+offset_right = 282.0
+offset_bottom = 434.0
+theme_override_colors/font_color = Color(0.223529, 1, 0.415686, 1)
+text = "SKILL TREE"
 
 [node name="UltimateButton" type="Button" parent="." unique_id=1040992877]
 unique_name_in_owner = true

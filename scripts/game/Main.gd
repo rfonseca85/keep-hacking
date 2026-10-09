@@ -32,6 +32,7 @@ const COL_PANEL := Color8(12, 15, 22)
 @onready var trace_bar: ProgressBar = $HUD/TraceBar
 @onready var trace_label: Label = $HUD/TraceLabel
 @onready var trait_label: Label = $HUD/TraitLabel
+@onready var summary_dim: ColorRect = $HUD/SummaryDim
 @onready var summary_panel: Panel = $HUD/SummaryPanel
 @onready var summary_credits_lbl: Label = $HUD/SummaryPanel/SummaryCredits
 @onready var summary_exploits_lbl: Label = $HUD/SummaryPanel/SummaryExploits
@@ -333,6 +334,13 @@ func _setup_hud() -> void:
 	$HUD/SummaryPanel/BreachAgainButton.add_theme_stylebox_override("normal", asb)
 	$HUD/SummaryPanel/BreachAgainButton.pressed.connect(func(): get_tree().reload_current_scene())
 
+	var ssb := StyleBoxFlat.new()
+	ssb.bg_color = COL_PANEL
+	ssb.border_color = COL_GREEN
+	ssb.set_border_width_all(2)
+	$HUD/SummaryPanel/SummarySkillTreeButton.add_theme_stylebox_override("normal", ssb)
+	$HUD/SummaryPanel/SummarySkillTreeButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/SkillTree.tscn"))
+
 	_setup_ultimate_button()
 	_refresh_hud()
 
@@ -351,6 +359,7 @@ func _end_round() -> void:
 	summary_credits_lbl.text = "◈ CREDITS EARNED: %d" % gained_credits
 	summary_exploits_lbl.text = "※ EXPLOITS EARNED: %d" % gained_exploits
 	summary_zerodays_lbl.text = "♦ 0-DAYS EARNED: %d" % gained_zerodays
+	summary_dim.visible = true
 	summary_panel.visible = true
 	_refresh_hud()
 

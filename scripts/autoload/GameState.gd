@@ -13,7 +13,7 @@ var decrypt_speed: float = 0.55
 var decrypt_radius: float = 34.0
 var bot_level: int = 0
 var yield_mult: float = 1.0
-var round_duration: float = 30.0
+var round_duration: float = 20.0
 var honeypot_penalty_mult: float = 1.0
 var max_nodes: int = 5
 var weaken_mult: float = 1.0
@@ -69,7 +69,7 @@ func reset_all() -> void:
 	decrypt_radius = 34.0
 	bot_level = 0
 	yield_mult = 1.0
-	round_duration = 30.0
+	round_duration = 20.0
 	honeypot_penalty_mult = 1.0
 	max_nodes = 5
 	weaken_mult = 1.0
