@@ -31,13 +31,32 @@ const SKILL_MAX := {
 @onready var cb_show_debug_info: CheckBox = $OverlayLayer/DevPanel/Scroll/Content/CbShowDebugInfo
 @onready var cb_disable_fx: CheckBox = $OverlayLayer/DevPanel/Scroll/Content/CbDisableFx
 
+var _editor_last_edited: Node = null
+
+
+func _apply_editor_visibility() -> void:
+	# DevMode is an autoload: its @tool script runs while you edit ANY scene and was drawing
+	# a full-screen frame + dev panel on top. Only the scene tab's own instance should preview.
+	if not Engine.is_editor_hint():
+		return
+	var edited := get_tree().get_edited_scene_root()
+	if edited == self:
+		visible = true
+		editor_frame.visible = true
+		_set_menu_visible(true)
+	else:
+		visible = false
+		_set_menu_visible(false)
+
+
 func _ready() -> void:
-	editor_frame.visible = Engine.is_editor_hint()
 	if panel_style:
 		panel.add_theme_stylebox_override("panel", panel_style)
 	if Engine.is_editor_hint():
-		_set_menu_visible(true)
+		set_process(true)
+		_apply_editor_visibility()
 		return
+	editor_frame.visible = false
 	_set_menu_visible(false)
 	set_process(true)
 	set_process_unhandled_input(true)
@@ -52,6 +71,12 @@ func _ready() -> void:
 			_set_menu_visible(true)
 			_refresh_fields()
 		)
+
+
+func _enter_tree() -> void:
+	if Engine.is_editor_hint():
+		call_deferred("_apply_editor_visibility")
+
 
 func _set_menu_visible(open: bool) -> void:
 	panel.visible = open
@@ -69,6 +94,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
+		var edited := get_tree().get_edited_scene_root()
+		if edited != _editor_last_edited:
+			_editor_last_edited = edited
+			_apply_editor_visibility()
 		return
 	if show_fps:
 		fps_lbl.visible = true
