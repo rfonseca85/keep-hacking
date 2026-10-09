@@ -1,0 +1,1 @@
+PASS: all listed image files exist, decode correctly, render screenshot dimensions correctly, and prop PNGs have transparent corners. Atlas grids validated.

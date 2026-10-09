@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keep Hacking — Assets Preview</title>
+<style>
+:root{--bg:#070c1a;--panel:#0e1729;--border:#273e5e;--mint:#42f7a9;--cyan:#45def5;--pink:#ff5378;--text:#d9f5fa;--muted:#8795a9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;background-image:linear-gradient(90deg,transparent 98%,#0b1826 100%),linear-gradient(#0b1826 1px,transparent 1px);background-size:32px 32px}
+.wrap{max-width:1430px;margin:auto;padding:26px 22px 80px}h1{font-size:36px;letter-spacing:3px;margin:0;color:var(--mint)}.sub{color:var(--muted);margin:3px 0 22px}.pill{border:1px solid var(--border);border-radius:4px;padding:9px 14px;color:var(--cyan);font-size:12px}
+header{display:flex;align-items:center;justify-content:space-between;gap:20px}.nav{display:flex;gap:9px;margin:18px 0;flex-wrap:wrap}.nav button,.act{border:1px solid var(--border);color:var(--text);background:#122039;font:inherit;padding:11px 17px;cursor:pointer;border-radius:2px}.nav button:hover,.act:hover{border-color:var(--cyan)}.nav button.active{border-color:var(--mint);color:var(--mint);box-shadow:inset 3px 0 var(--mint)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px}.stage{min-width:0}.screen{width:100%;aspect-ratio:16/9;display:block;object-fit:contain;border:2px solid #30536c;image-rendering:pixelated;background:#08152a;cursor:crosshair;box-shadow:0 16px 70px #0008}.right{background:#0b1427;border:1px solid var(--border);padding:20px;display:flex;flex-direction:column;gap:12px}.right h2{font-size:16px;letter-spacing:1px;color:var(--cyan);margin:0 0 2px}.metric{display:flex;align-items:center;justify-content:space-between;padding:10px 8px;border-bottom:1px solid #26374f}.metric strong{color:var(--mint);font-size:16px}.right .act{width:100%;text-align:center}.danger{border-color:#803147;color:#ff7b91}.log{background:#071020;min-height:110px;max-height:190px;overflow:auto;padding:12px;color:#9ccabf;font-size:11px;white-space:pre-wrap}.helper{margin:15px 0;color:var(--muted)}.gallery{margin-top:26px}.gallery h2{color:var(--cyan);font-size:19px}.thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.thumbs button{padding:0;border:1px solid var(--border);cursor:pointer;color:var(--text);background:var(--panel);font:11px ui-monospace,monospace;text-align:left}.thumbs img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;image-rendering:pixelated}.thumbs span{display:block;padding:9px}.thumbs button:hover{border-color:var(--mint)}.catalog{display:block;max-width:100%;width:800px;height:auto;border:1px solid var(--border)}footer{margin-top:20px;color:var(--muted);font-size:12px}a{color:var(--cyan)}
+@media(max-width:900px){main{grid-template-columns:1fr}.right{display:grid;grid-template-columns:repeat(2,1fr)}.right h2,.log{grid-column:1/-1}.thumbs{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.wrap{padding:14px 11px}h1{font-size:25px}.right{grid-template-columns:1fr}.right h2,.log{grid-column:auto}}
+</style></head><body><div class="wrap">
+<header><div><h1>KEEP HACKING<span style="color:#45def5">_</span></h1><div class="sub">ASSET PACK PREVIEW // ORIGINAL PIXEL ART // OFFLINE</div></div><div class="pill">DEV KIT • v0.9.1</div></header>
+<div class="nav" id="nav"><button data-page="game" class="active">▶ Gameplay interativo</button><button data-page="tree">▦ Research</button><button data-page="select">◈ Networks</button><button data-page="hub">⌘ Nexus District</button><button data-page="late">☣ Final Breach</button></div>
+<main><section class="stage"><canvas id="canvas" class="screen" width="640" height="360" title="Clique em um nó para coletar dados"></canvas>
+<p class="helper" id="helper">Clique nos servidores do tabuleiro para extrair dados fictícios. Aperte Espaço para executar uma varredura automática.</p></section>
+<aside class="right"><h2>STATS // LIVE DEMO</h2><div class="metric">◈ Créditos <strong id="credits">150</strong></div><div class="metric">◆ Pacotes <strong id="data">0</strong></div><div class="metric">⌁ Upgrades <strong id="upgrades">0</strong></div><div class="metric">⚡ Auto / scan <strong id="auto">0</strong></div><button class="act" id="scan">⚡ SCAN ALL</button><button class="act" id="upgrade">+ PACKET BOOST • 200 CR</button><button class="act danger" id="reset">↺ REINICIAR</button><h2>EVENT LOG</h2><div class="log" id="log"></div></aside></main>
+<section class="gallery"><h2>8 TELAS / SCREENSHOT GALLERY</h2><div class="thumbs" id="thumbs"></div><h2 style="margin-top:32px">SPRITES // 34 PROPS + 32 ÍCONES</h2><img class="catalog" src="assets/asset_catalog.png" alt="Catálogo original de pixel art"></section>
+<footer>Este preview utiliza os PNGs originais da pasta <code>assets/</code>. O jogo é demonstrativo e não realiza hacking real. <a href="README_PTBR.md">Leia o README</a>.</footer></div>
+<script>
+const pictures=[
+['01_first_breach','Early breach'],['02_upgrade_details','Research tooltip'],['03_automated_intrusion','Automated intrusion'],['04_network_selection','Networks'],['05_nexus_district','Nexus hub'],['06_midgame_scan','Midgame'],['07_full_research_tree','Full skill tree'],['08_final_breach','Final breach']
+];
+const c=document.getElementById('canvas'),ctx=c.getContext('2d');ctx.imageSmoothingEnabled=false;
+const imgs={};const sprites=['terminal','server_rack','server_cluster','firewall','database','router','quantum_core','data_cache','bot_drone','cooling_fan','processor','access_port','glitch_node','secure_node'];
+for(const name of sprites){let im=new Image();im.src='assets/props/'+name+'.png';im.onload=render;imgs[name]=im;}
+for(const [stem] of pictures){let im=new Image();im.src='screenshots/'+stem+'.png';im.onload=render;imgs[stem]=im;}
+let page='game',credits=150,data=0,upgrades=0,auto=0,seed=12,step=0;
+let nodes=[];let messages=[];
+const log=t=>{messages.unshift('> '+t);messages=messages.slice(0,9);document.getElementById('log').textContent=messages.join('\n');};
+function resetNodes(){let rnd=mulberry32(seed);nodes=[];for(let i=0;i<68;i++){const x=104+(i%17)*26,y=67+Math.floor(i/17)*52;let name=sprites[Math.floor(rnd()*sprites.length)];nodes.push({x,y,name,progress:Math.floor(rnd()*60),active:true})}render();}
+function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}}
+function stats(){for(let [key,val] of Object.entries({credits,data,upgrades,auto}))document.getElementById(key).textContent=val.toLocaleString('pt-BR')}
+function drawText(s,x,y,color='#d9f5fa',size=10){ctx.fillStyle=color;ctx.font='bold '+size+'px monospace';ctx.fillText(s,x,y)}
+function render(){ctx.clearRect(0,0,640,360);ctx.fillStyle='#07101f';ctx.fillRect(0,0,640,360);
+ if(page!=='game'){const map={tree:'07_full_research_tree',select:'04_network_selection',hub:'05_nexus_district',late:'08_final_breach'};let img=imgs[map[page]];if(img&&img.complete)ctx.drawImage(img,0,0,640,360);return;}
+ for(let y=0;y<360;y+=20){for(let x=0;x<640;x+=20){ctx.fillStyle=(x+y)%40===0?'#10213a':'#0d1b30';ctx.fillRect(x,y,19,19)}}
+ ctx.fillStyle='#101D32';ctx.fillRect(86,56,467,260);ctx.strokeStyle='#247088';ctx.lineWidth=2;ctx.strokeRect(86,56,467,260);
+ for(let x=90;x<550;x+=26){ctx.strokeStyle='#24384f';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,58);ctx.lineTo(x,314);ctx.stroke()}
+ for(let y=60;y<314;y+=26){ctx.strokeStyle='#24384f';ctx.beginPath();ctx.moveTo(88,y);ctx.lineTo(551,y);ctx.stroke()}
+ for(const n of nodes){const pic=imgs[n.name];if(pic&&pic.complete)ctx.drawImage(pic,n.x-13,n.y-13,28,28);
+ if(n.progress>0){ctx.fillStyle='#0a1122';ctx.fillRect(n.x-10,n.y+13,23,3);ctx.fillStyle=n.progress>=100?'#42f7a9':'#45def5';ctx.fillRect(n.x-10,n.y+13,Math.min(23,n.progress*23/100),3)}
+ }
+ ctx.fillStyle='#081222';ctx.fillRect(0,0,640,52);ctx.fillRect(0,322,640,38);ctx.strokeStyle='#35506e';ctx.strokeRect(0,0,639,51);
+ drawText('KEEP HACKING_ // NETWORK RUN',14,19,'#42f7a9',13);drawText('CREDITS '+credits+'  /  DATA '+data,14,39,'#d9f5fa');
+ ctx.fillStyle='#243b55';ctx.fillRect(330,18,288,13);ctx.fillStyle='#42f7a9';ctx.fillRect(333,21,Math.min(281,(step%80)*3.5),7);
+ drawText('SCAN  >  EXTRACT  >  UPGRADE',15,344,'#a4bdc9');drawText('CLICK TARGETS TO EXTRACT',405,344,'#45def5');
+ if(step){let x=319,y=188;ctx.strokeStyle='#45def5';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,19+step%8,0,Math.PI*2);ctx.stroke();}
+}
+function harvest(n){n.progress+=25+upgrades*4;step++;if(n.progress>=100){n.progress=0;credits+=40+upgrades*20;data+=3+upgrades;log('DATA EXTRACTED +' +(3+upgrades)+' // +'+(40+upgrades*20)+' CR');}else{credits+=5+upgrades;log('SCAN PROGRESS '+n.progress+'%');}stats();render()}
+function scan(){let n=nodes.filter(n=>n.active);if(!n.length)return;let q=4+auto*2;for(let i=0;i<q;i++)harvest(n[(step+i*7)%n.length]);log('BATCH SCAN COMPLETED');render()}
+c.addEventListener('click',e=>{if(page!=='game'){if(page==='select'){seed=(seed+1)%50;resetNodes();page='game';updateNav();log('TARGET NETWORK CHANGED');render()}else if(page==='tree')buy();return;}
+ let r=c.getBoundingClientRect();let x=(e.clientX-r.left)*640/r.width,y=(e.clientY-r.top)*360/r.height;
+ let best=null,dist=1e10;for(const n of nodes){let d=Math.hypot(n.x-x,n.y-y);if(d<dist){best=n;dist=d}}if(best&&dist<27)harvest(best)});
+function buy(){if(credits<200){log('INSUFFICIENT CREDITS / NEED 200');return}credits-=200;upgrades++;auto++;log('UPGRADE PURCHASED: PACKET BOOST Lv'+upgrades);stats();render()}
+function updateNav(){document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));document.getElementById('helper').textContent=page==='game'?'Clique nos servidores para extrair dados fictícios. Pressione Espaço para varrer a rede.':page==='tree'?'Tela de referência da árvore tecnológica. Clique no painel para tentar comprar Packet Boost.':page==='select'?'Tela de seleção de redes. Clique na tela para mudar a rede do demo.':'Tela de referência, construída em pixel art original.';render()}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{page=b.dataset.page;updateNav()});
+document.getElementById('scan').onclick=scan;document.getElementById('upgrade').onclick=buy;document.getElementById('reset').onclick=()=>{credits=150;data=0;upgrades=0;auto=0;step=0;log('RESET COMPLETE');resetNodes();stats()};
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();scan()}});
+for(let [i,[stem,label]]of pictures.entries()){const b=document.createElement('button');const pic=document.createElement('img');pic.src='screenshots/'+stem+'.png';pic.loading='lazy';pic.alt=label;const cap=document.createElement('span');cap.textContent=String(i+1).padStart(2,'0')+' // '+label;b.append(pic,cap);b.onclick=()=>{page=['game','tree','game','select','hub','game','tree','late'][i];updateNav();document.getElementById('canvas').scrollIntoView({behavior:'smooth',block:'center'})};document.getElementById('thumbs').appendChild(b)}
+log('READY // CLICK ON A NODE');resetNodes();stats();updateNav();
+</script></body></html>
