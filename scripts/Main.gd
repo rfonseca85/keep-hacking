@@ -615,7 +615,8 @@ func _process(delta: float) -> void:
 		_update_row_wipe(delta)
 		_update_ultimate(delta)
 
-		trace_progress -= delta / GameState.round_duration
+		if not (DevMode.infinite_time or DevMode.god_mode):
+			trace_progress -= delta / GameState.round_duration
 		if trace_progress <= 0.0:
 			trace_progress = 0.0
 			_end_round()
@@ -727,10 +728,12 @@ func _update_row_wipe(delta: float) -> void:
 			_exfiltrate(n)
 
 func _update_ultimate(delta: float) -> void:
-	if GameState.ultimate_wipe_level <= 0:
+	if GameState.ultimate_wipe_level <= 0 and not DevMode.god_mode:
 		return
 	if ultimate_btn == null:
 		_build_ultimate_button()
+	if DevMode.infinite_ultimates or DevMode.god_mode:
+		ultimate_cooldown = 0.0
 	if ultimate_cooldown > 0.0:
 		ultimate_cooldown -= delta
 		ultimate_cd_bar.value = 1.0 - max(0.0, ultimate_cooldown) / _ultimate_cooldown_max()

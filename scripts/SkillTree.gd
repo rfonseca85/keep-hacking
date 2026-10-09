@@ -10,8 +10,10 @@ const COL_LOCKED := Color8(255, 90, 120)
 
 const COLS := 4
 const ROWS := 4
-const COL_X := [170, 400, 630, 860]
-const ROW_Y := [160, 310, 460, 610]
+const COL_X := [190, 450, 710, 970]
+const ROW_Y := [145, 295, 445, 595]
+const CARD_W := 132.0
+const CARD_H := 118.0
 
 class SkillDef:
 	var id: String
@@ -55,6 +57,11 @@ func _ready() -> void:
 	mesh.z_index = -2
 	add_child(mesh)
 	mesh.draw.connect(_draw_matrix_bg.bind(mesh))
+
+	var scan := Node2D.new()
+	scan.z_index = -2
+	add_child(scan)
+	scan.draw.connect(_draw_scanlines.bind(scan))
 
 	_define_skills()
 	_draw_links()
@@ -129,6 +136,12 @@ func _draw_matrix_bg(node: Node2D) -> void:
 		if rng.randf() < 0.1:
 			node.draw_rect(Rect2(x, y, 2, 2), Color8(30, 50, 42), true)
 
+func _draw_scanlines(node: Node2D) -> void:
+	var y := 0
+	while y < 720:
+		node.draw_rect(Rect2(0, y, 1280, 1), Color(1, 1, 1, 0.012), true)
+		y += 3
+
 func _draw_links() -> void:
 	var line_node := Node2D.new()
 	line_node.z_index = -1
@@ -143,24 +156,74 @@ func _build_nodes() -> void:
 	for s in skills:
 		var p := _pos(s.row, s.col)
 		var btn := Button.new()
-		btn.position = p - Vector2(52, 46)
-		btn.size = Vector2(104, 92)
-		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
-		btn.add_theme_font_size_override("font_size", 10)
+		btn.position = p - Vector2(CARD_W / 2.0, CARD_H / 2.0)
+		btn.size = Vector2(CARD_W, CARD_H)
+		btn.text = ""
 		btn.pressed.connect(_on_node_pressed.bind(s, btn))
-		btn.mouse_entered.connect(_show_preview.bind(s))
-		btn.mouse_exited.connect(_hide_preview)
+		btn.mouse_entered.connect(_on_node_hover.bind(s, true))
+		btn.mouse_exited.connect(_on_node_hover.bind(s, false))
 		add_child(btn)
 		node_buttons[s.id] = btn
+
+		var header := Node2D.new()
+		header.position = p - Vector2(CARD_W / 2.0, CARD_H / 2.0)
+		add_child(header)
+		header.draw.connect(_draw_card_header.bind(header, s))
+		node_icons[s.id + "_header"] = header
 
 		var icon_node := _SkillIcon.new()
 		icon_node.icon_key = s.icon
 		icon_node.max_level = s.max_level
-		icon_node.position = p - Vector2(0, 32)
+		icon_node.position = p - Vector2(0, 30)
 		add_child(icon_node)
 		node_icons[s.id] = icon_node
 
+		var name_lbl := Label.new()
+		name_lbl.position = p - Vector2(CARD_W / 2.0 - 4, -6)
+		name_lbl.size = Vector2(CARD_W - 8, 30)
+		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+		name_lbl.add_theme_font_size_override("font_size", 12)
+		add_child(name_lbl)
+		node_icons[s.id + "_name"] = name_lbl
+
+		var sub_lbl := Label.new()
+		sub_lbl.position = p - Vector2(CARD_W / 2.0 - 4, -42)
+		sub_lbl.size = Vector2(CARD_W - 8, 18)
+		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sub_lbl.add_theme_font_size_override("font_size", 11)
+		add_child(sub_lbl)
+		node_icons[s.id + "_sub"] = sub_lbl
+
 		_refresh_node(s, btn)
+
+func _on_node_hover(s, entered: bool) -> void:
+	var icon_node: Node2D = node_icons.get(s.id)
+	if entered:
+		_show_preview(s)
+		if icon_node:
+			icon_node.hovered = true
+			icon_node.queue_redraw()
+	else:
+		_hide_preview()
+		if icon_node:
+			icon_node.hovered = false
+			icon_node.queue_redraw()
+
+func _draw_card_header(node: Node2D, s) -> void:
+	var col := _state_color(s)
+	node.draw_rect(Rect2(0, 0, CARD_W, 20), Color(col.r, col.g, col.b, 0.16), true)
+	node.draw_line(Vector2(0, 20), Vector2(CARD_W, 20), col, 1.0)
+	for d in range(3):
+		node.draw_rect(Rect2(8 + d * 11, 8, 6, 6), Color(col.r, col.g, col.b, 0.7), true)
+
+func _state_color(s) -> Color:
+	if not _is_revealed(s) or s.max_level == 0:
+		return COL_LOCKED
+	var lvl: int = GameState.skill_levels.get(s.id, 0)
+	if lvl > 0:
+		return COL_GREEN
+	return COL_CYAN
 
 func _is_revealed(s) -> bool:
 	return GameState.lifetime_credits_earned >= s.reveal_threshold
@@ -186,46 +249,65 @@ func _on_node_pressed(s, btn: Button) -> void:
 
 func _refresh_node(s, btn: Button) -> void:
 	var icon_node: Node2D = node_icons[s.id]
+	var name_lbl: Label = node_icons[s.id + "_name"]
+	var sub_lbl: Label = node_icons[s.id + "_sub"]
+	var header: Node2D = node_icons[s.id + "_header"]
 	var revealed := _is_revealed(s)
+
 	if not revealed:
-		btn.text = "\n\n\n???"
+		name_lbl.text = "??? CLASSIFIED"
+		name_lbl.add_theme_color_override("font_color", COL_LOCKED)
+		sub_lbl.text = "locked"
+		sub_lbl.add_theme_color_override("font_color", Color8(140, 70, 85))
 		btn.add_theme_stylebox_override("normal", _skill_stylebox("locked"))
-		btn.add_theme_color_override("font_color", COL_LOCKED)
 		icon_node.visible = false
 		icon_node.level = 0
+		header.queue_redraw()
 		return
 
 	icon_node.visible = true
 	var lvl: int = GameState.skill_levels.get(s.id, 0)
 	icon_node.level = lvl
+
 	if s.max_level == 0:
-		btn.text = "\n\n\n%s" % s.label
+		name_lbl.text = s.label
+		name_lbl.add_theme_color_override("font_color", COL_DIM)
+		sub_lbl.text = "research pending"
+		sub_lbl.add_theme_color_override("font_color", COL_DIM)
 		btn.add_theme_stylebox_override("normal", _skill_stylebox("locked"))
-		btn.add_theme_color_override("font_color", COL_DIM)
 		icon_node.visible = false
+		header.queue_redraw()
 		return
 
+	name_lbl.text = s.label
 	if lvl >= s.max_level:
-		btn.text = "\n\n\n%s\nMAX" % s.label
+		name_lbl.add_theme_color_override("font_color", COL_GREEN)
+		sub_lbl.text = "★ MAX LEVEL"
+		sub_lbl.add_theme_color_override("font_color", COL_GREEN)
 		btn.add_theme_stylebox_override("normal", _skill_stylebox("active"))
-		btn.add_theme_color_override("font_color", COL_GREEN)
 		icon_node.col = COL_GREEN
 	else:
 		var cost: int = int(s.cost * pow(1.5, lvl))
-		btn.text = "\n\n\n%s\nLv%d (%d)" % [s.label, lvl, cost]
 		if lvl > 0:
+			name_lbl.add_theme_color_override("font_color", COL_GREEN)
+			sub_lbl.text = "Lv%d/%d  ·  %d◈" % [lvl, s.max_level, cost]
+			sub_lbl.add_theme_color_override("font_color", COL_GREEN)
 			btn.add_theme_stylebox_override("normal", _skill_stylebox("active"))
-			btn.add_theme_color_override("font_color", COL_GREEN)
 			icon_node.col = COL_GREEN
 		elif GameState.credits >= cost:
+			name_lbl.add_theme_color_override("font_color", COL_CYAN)
+			sub_lbl.text = "%d◈ credits" % cost
+			sub_lbl.add_theme_color_override("font_color", COL_CYAN)
 			btn.add_theme_stylebox_override("normal", _skill_stylebox("available"))
-			btn.add_theme_color_override("font_color", COL_CYAN)
 			icon_node.col = COL_CYAN
 		else:
+			name_lbl.add_theme_color_override("font_color", Color8(150, 170, 185))
+			sub_lbl.text = "%d◈ credits" % cost
+			sub_lbl.add_theme_color_override("font_color", COL_DIM)
 			btn.add_theme_stylebox_override("normal", _skill_stylebox("available"))
-			btn.add_theme_color_override("font_color", COL_DIM)
 			icon_node.col = COL_DIM
 	icon_node.queue_redraw()
+	header.queue_redraw()
 
 func _skill_stylebox(state: String) -> StyleBox:
 	var sb := StyleBoxFlat.new()
@@ -362,19 +444,27 @@ class _SkillIcon extends Node2D:
 	var col: Color = Color8(0, 229, 255)
 	var level: int = 0
 	var max_level: int = 0
+	var hovered: bool = false
 	var _tex: Texture2D
 	func _ready() -> void:
 		_tex = KHArt.tex("icons", icon_key)
 		queue_redraw()
 	func _draw() -> void:
+		var glow_r := 24.0 if hovered else 20.0
+		draw_circle(Vector2.ZERO, glow_r, Color(col.r, col.g, col.b, 0.14))
+		draw_arc(Vector2.ZERO, glow_r, 0, TAU, 28, Color(col.r, col.g, col.b, 0.5), 1.0)
 		if _tex:
-			draw_texture_rect(_tex, Rect2(-11, -11, 22, 22), false, col)
+			var sz := 30.0 if hovered else 26.0
+			draw_texture_rect(_tex, Rect2(-sz / 2.0, -sz / 2.0, sz, sz), false, col)
 		if max_level > 0:
-			var pip_w := 7.0
-			var gap := 3.0
+			var pip_w := 10.0
+			var gap := 4.0
 			var total_w := max_level * pip_w + (max_level - 1) * gap
 			var start_x := -total_w / 2.0
+			var track := Rect2(start_x - 3, 25, total_w + 6, 10)
+			draw_rect(track, Color8(8, 10, 15), true)
+			draw_rect(track, Color(col.r, col.g, col.b, 0.3), false, 1.0)
 			for i in range(max_level):
 				var filled := i < level
-				var c := col if filled else Color8(50, 58, 68)
-				draw_rect(Rect2(start_x + i * (pip_w + gap), 16, pip_w, 5), c, true)
+				var c := col if filled else Color8(42, 48, 58)
+				draw_rect(Rect2(start_x + i * (pip_w + gap), 27, pip_w, 6), c, true)

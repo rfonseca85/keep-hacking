@@ -59,3 +59,23 @@ func try_unlock_tier(i: int) -> bool:
 		unlocked_tiers[i] = true
 		return true
 	return false
+
+func reset_all() -> void:
+	credits = 0
+	exploits = 0
+	zerodays = 0
+	lifetime_credits_earned = 0
+	decrypt_speed = 0.55
+	decrypt_radius = 34.0
+	bot_level = 0
+	yield_mult = 1.0
+	round_duration = 30.0
+	honeypot_penalty_mult = 1.0
+	max_nodes = 5
+	weaken_mult = 1.0
+	hunter_bot_count = 0
+	row_wipe_level = 0
+	ultimate_wipe_level = 0
+	skill_levels = {}
+	selected_tier = 0
+	unlocked_tiers = [true, false, false, false]
